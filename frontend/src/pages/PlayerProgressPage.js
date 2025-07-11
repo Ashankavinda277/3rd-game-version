@@ -41,18 +41,20 @@ const PlayerProgressPage = () => {
           const scores = response.data?.scores || response.data?.data?.scores || [];          // Group by mode
           const games = scores.map(s => ({
             id: s._id,
-            score: s.score,
-            mode: s.gameMode,
-            accuracy: s.accuracy,
-            duration: s.timePlayed,
+            score: Number(s.score) || 0,
+            mode: s.gameMode || 'Unknown',
+            accuracy: Number(s.accuracy) || 0,
+            duration: Number(s.timePlayed) || 0,
             date: s.createdAt
           }));
           const totalGames = games.length;
-          const highestScore = games.reduce((max, g) => g.score > max ? g.score : max, 0);
-          const averageScore = totalGames > 0 ? (games.reduce((sum, g) => sum + g.score, 0) / totalGames) : 0;
+          const highestScore = games.length > 0 ? games.reduce((max, g) => Math.max(max, g.score), 0) : 0;
+          const averageScore = totalGames > 0 ? Math.round((games.reduce((sum, g) => sum + g.score, 0) / totalGames) * 100) / 100 : 0;
           // Find preferred mode (most played)
           const modeCounts = games.reduce((acc, g) => { acc[g.mode] = (acc[g.mode] || 0) + 1; return acc; }, {});
-          const preferredMode = Object.keys(modeCounts).reduce((a, b) => modeCounts[a] > modeCounts[b] ? a : b, '');
+          const preferredMode = Object.keys(modeCounts).length > 0 
+            ? Object.keys(modeCounts).reduce((a, b) => modeCounts[a] > modeCounts[b] ? a : b, '')
+            : 'No games played';
           setProgressData({ games, totalGames, averageScore, highestScore, preferredMode });
         } else {
           setError(response.error || 'Failed to load progress data');
@@ -104,7 +106,7 @@ const PlayerProgressPage = () => {
               {/* Simple bar chart implementation */}
               {progressData.games.slice(-10).map((game, index) => (
                 <ChartBar key={game.id || index}>
-                  <Bar height={(game.score / progressData.highestScore) * 100}>
+                  <Bar height={progressData.highestScore > 0 ? (game.score / progressData.highestScore) * 100 : 0}>
                     <BarValue>{game.score}</BarValue>
                   </Bar>
                   <BarLabel>{new Date(game.date).toLocaleDateString()}</BarLabel>
@@ -262,7 +264,10 @@ const ChartBar = styled.div`
 const Bar = styled.div`
   position: relative;
   width: 100%;
-  height: ${props => props.height}%;
+  height: ${props => {
+    const height = props.height || 0;
+    return isNaN(height) ? 0 : Math.max(height, 5);
+  }}%;
   background: linear-gradient(to top, #3498db, #2ecc71);
   border-radius: 3px;
   min-height: 5px;
