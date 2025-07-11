@@ -18,15 +18,23 @@ const setupWebSocketServer = require('./websocketServer');
 // Initialize express app
 const app = express();
 
-// Create HTTP server
-const server = http.createServer(app);
+// Create HTTP server with increased header size limit
+const server = http.createServer({
+  maxHeaderSize: 16384, // 16KB (default is 8KB)
+  requestTimeout: 30000, // 30 seconds
+}, app);
 
 // Setup WebSocket server
 setupWebSocketServer(server);
 
 // Apply middleware
-app.use(cors());
-app.use(express.json());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+  maxHeaderSize: 16384 // 16KB limit
+}));
+app.use(express.json({ limit: '10mb' })); // Increase JSON payload limit
+app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Handle URL-encoded data
 app.use(requestLogger);
 
 // Serve static files from frontend public directory
