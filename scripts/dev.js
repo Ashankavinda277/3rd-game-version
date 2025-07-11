@@ -11,6 +11,9 @@ const rootDir = path.resolve(__dirname, '..');
 const backendDir = path.join(rootDir, 'backend');
 const frontendDir = path.join(rootDir, 'frontend');
 
+// Platform-specific npm command
+const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+
 // Colors for console output
 const colors = {
   reset: '\x1b[0m',
@@ -45,7 +48,10 @@ function createLogger(prefix, prefixColor) {
 function startBackend() {
   console.log(`${colors.bright}${colors.blue}Starting backend server...${colors.reset}`);
   
-  const backend = spawn('npm', ['run', 'dev'], { cwd: backendDir });
+  const backend = spawn(npmCmd, ['run', 'dev'], { 
+    cwd: backendDir,
+    shell: true 
+  });
   
   const backendLogger = createLogger('backend', colors.blue);
   
@@ -65,7 +71,10 @@ function startBackend() {
 function startFrontend() {
   console.log(`${colors.bright}${colors.green}Starting frontend server...${colors.reset}`);
   
-  const frontend = spawn('npm', ['start'], { cwd: frontendDir });
+  const frontend = spawn(npmCmd, ['start'], { 
+    cwd: frontendDir,
+    shell: true 
+  });
   
   const frontendLogger = createLogger('frontend', colors.green);
   
