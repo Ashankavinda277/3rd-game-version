@@ -67,7 +67,9 @@ export const submitScore = async (scoreData) => {
 };
 
 export const fetchLeaderboard = async (mode = "all") => {
-  return apiRequest(`/game/scores/leaderboard?mode=${mode}`);
+  // Add timestamp to prevent caching
+  const timestamp = Date.now();
+  return apiRequest(`/game/scores/leaderboard?mode=${mode}&_t=${timestamp}`);
 };
 
 export const fetchPlayerProgressByUsername = async (username) => {
@@ -103,7 +105,9 @@ export const getConnectionStatus = async () => {
 };
 export async function fetchUserScores(userId) {
   try {
-    const res = await fetch(`/api/game/scores/user/${userId}`);
+    // Add timestamp to prevent caching
+    const timestamp = Date.now();
+    const res = await fetch(`/api/game/scores/user/${userId}?_t=${timestamp}`);
     const data = await res.json();
     return { ok: res.ok, data, error: !res.ok ? data?.message || 'Failed to fetch user scores' : null };
   } catch (err) {

@@ -41,6 +41,13 @@ exports.getTopScores = async (req, res) => {
   const limit = req.query.limit ? parseInt(req.query.limit) : 10;
   
   try {
+    // Set cache control headers to prevent caching
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+
     const scores = await gameService.getTopScores(gameMode, limit);
     return successResponse(
       res, 
@@ -89,6 +96,13 @@ exports.getUserBestScore = async (req, res) => {
 exports.getAllScoresForUser = async (req, res) => {
   const { userId } = req.params;
   try {
+    // Set cache control headers to prevent caching
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+
     const Score = require('../../models/game/Score');
     const scores = await Score.find({ user: userId }).sort({ createdAt: -1 });
     return successResponse(res, 200, 'User scores retrieved successfully', { scores });
@@ -104,6 +118,13 @@ exports.getLeaderboard = async (req, res) => {
   const mode = req.query.mode || 'all';
   const limit = req.query.limit ? parseInt(req.query.limit) : 10;
   try {
+    // Set cache control headers to prevent caching
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+
     const Score = require('../../models/game/Score');
     let match = {};
     if (mode !== 'all') {
