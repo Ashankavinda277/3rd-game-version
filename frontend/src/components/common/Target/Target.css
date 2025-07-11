@@ -1,0 +1,70 @@
+.target {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  margin: 50px auto;
+}
+
+:root {
+  --target-color: #27ae60; /* Default target color */
+}
+
+.target-circle {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid black;
+  transition: all 0.3s ease;
+}
+
+.target-wrapper {
+  position: relative;
+  --target-color: var(--target-color, #27ae60); /* Use CSS variable with fallback */
+}
+
+.bullet-hit {
+  position: absolute;
+  width: 10px;
+  height: 2px;
+  background: red;
+  animation: bullet 2s linear infinite;
+}
+
+.laser-hit {
+  position: absolute;
+  width: 2px;
+  height: 10px;
+  background: blue;
+  animation: laser 2s linear infinite;
+}
+
+/* Target Rings */
+.ring-7 { width: 300px; height: 300px; background: rgb(13, 37, 9); }
+.ring-6 { width: 250px; height: 250px; background: white; top: 25px; left: 25px; }
+.ring-5 { width: 200px; height: 200px; background: rgb(13, 37, 9); top: 50px; left: 50px; }
+.ring-4 { width: 150px; height: 150px; background: white; top: 75px; left: 75px; }
+.ring-3 { width: 100px; height: 100px; background: rgb(13, 37, 9); top: 100px; left: 100px; }
+.ring-2 { width: 70px; height: 70px; background: white; top: 115px; left: 115px; }
+.ring-1 { width: 40px; height: 40px; background: red; top: 130px; left: 130px; }
+
+/* Crosshair */
+.target::before,
+.target::after {
+  content: '';
+  position: absolute;
+  background: rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+.target::before {
+  width: 2px;
+  height: 300px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.target::after {
+  width: 300px;
+  height: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+}

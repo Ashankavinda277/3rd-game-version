@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap');
+.header {
+    text-align: center;
+    padding: 80px 20px 20px 20px;  /* top right bottom left */
+    background-color: #3d5e53;
+    color: rgb(0, 0, 0);
+    width: 100%;
+}
+.header h1 {
+    margin: 0;
+    font-size: 3.5em;
+    font-family: 'Playfair Display', serif;
+    text-transform: uppercase;
+    letter-spacing: 8px;
+    font-weight: 700;
+    color: #000000;
+    text-shadow: 
+        2px 2px 0 #000,
+        -2px -2px 0 #000,
+        2px -2px 0 #000,
+        -2px 2px 0 #000;
+    transition: all 0.3s ease;
+}
+
+.header h1:hover {
+    letter-spacing: 12px;
+    text-shadow: 
+        3px 3px 0 #000,
+        -3px -3px 0 #000,
+        3px -3px 0 #000,
+        -3px 3px 0 #000;
+}

@@ -1,0 +1,54 @@
+// Removed duplicate FinalPage component. Use pages/FinalPage.js instead.
+
+const Header = styled.h2`
+  font-size: 4rem;
+  margin-bottom: 2rem;
+  color: gold;
+`;
+
+const ContentWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+`;
+
+const Overlay = styled.div`
+  background: silver; /* Light overlay for better text visibility */
+  padding: 2rem;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+`;
+
+const ButtonContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+`;
+
+const Button = styled.button`
+  width: 250px;
+  padding: 20px;
+  font-size: 1.5rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(to right, #27ae60, #219a52);
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s;
+
+  &:hover {
+    transform: scale(1.05);
+  }
+`;
+
+const LoaderWrapper = styled.div`
+  margin-top: 20px; /* Adjust margin to place it right after the overlay */
+`;
+
+const StyledLoader = styled(Loader)`
+  transform: scale(0.5); /* Reduce the size of the loader */
+`;
+
+export default FinalPage;

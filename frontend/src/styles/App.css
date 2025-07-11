@@ -1,0 +1,54 @@
+/* Global styles */
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #3d5e53; /* Dark gray */
+}
+
+.App {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #3d5e53 0%, #3d5e53 100%); /* Gradient background */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center; /* Center content vertically */
+    overflow: hidden; /* Ensure animations stay within bounds */
+}
+
+@keyframes bullet {
+    0% {
+        left: -10%;
+        top: 50%;
+    }
+    100% {
+        left: 110%;
+        top: 50%;
+    }
+}
+
+@keyframes laser {
+    0% {
+        left: 50%;
+        top: -10%;
+    }
+    100% {
+        left: 50%;
+        top: 110%;
+    }
+}
+
+.bullet {
+    position: absolute;
+    width: 10px;
+    height: 2px;
+    background: red;
+    animation: bullet 2s linear infinite;
+}
+
+.laser {
+    position: absolute;
+    width: 2px;
+    height: 10px;
+    background: blue;
+    animation: laser 2s linear infinite;
+}

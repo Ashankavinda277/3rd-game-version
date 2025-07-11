@@ -1,0 +1,33 @@
+/* Global CSS Variables */
+
+:root {
+  /* Color palette */
+  --color-primary: #27ae60;
+  --color-primary-dark: #219a52;
+  --color-secondary: #3d5e53;
+  --color-background: #3d5e53;
+  --color-text: #000000;
+  --color-text-light: #ffffff;
+  --color-accent: gold;
+  
+  /* Spacing */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 1.5rem;
+  --spacing-lg: 2rem;
+  --spacing-xl: 3rem;
+  
+  /* Font sizes */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 1rem;
+  --font-size-md: 1.5rem;
+  --font-size-lg: 2rem;
+  --font-size-xl: 3rem;
+  
+  /* Border radius */
+  --border-radius-sm: 5px;
+  --border-radius-md: 10px;
+  
+  /* Transitions */
+  --transition-speed: 0.3s;
+}

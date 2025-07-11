@@ -1,0 +1,36 @@
+{
+  "name": "smart-shooting-gallery",
+  "version": "1.0.0",
+  "description": "Web-based interactive shooting gallery with physical targets using ESP8266/NodeMCU and WebSockets",
+  "scripts": {
+    "setup": "node scripts/setup.js",
+    "dev": "node scripts/dev.js",
+    "start:backend": "cd backend && npm run dev",
+    "start:frontend": "cd frontend && npm start",
+    "test:backend": "cd backend && npm test",
+    "test:frontend": "cd frontend && npm test",
+    "test": "npm run test:backend && npm run test:frontend",
+    "install:backend": "cd backend && npm install",
+    "install:frontend": "cd frontend && npm install",
+    "install:all": "npm install && npm run install:backend && npm run install:frontend"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/smart-shooting-gallery.git"
+  },
+  "keywords": [
+    "shooting-gallery",
+    "esp8266",
+    "nodemcu",
+    "arduino",
+    "websockets",
+    "react",
+    "nodejs",
+    "iot"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
