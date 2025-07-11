@@ -1,7 +1,7 @@
 /** @format */
 
 import React, { useState } from "react";
-import styled from "styled-components";
+import "../styles/pages/RegisterPage.css";
 import { useNavigate } from "react-router-dom";
 import Target from "../components/common/Target";
 import Button from "../components/common/Button";
@@ -84,14 +84,14 @@ const RegisterPage = () => {
   };
 
   return (
-    <RegisterWrapper>
-      <Overlay>
+    <div className="register-wrapper">
+      <div className="register-overlay">
         <h2>{isSignUp ? "Sign Up" : "Sign In"}</h2>
         <h3>Welcome to Smart Shooting Gallery!</h3>
 
-        <ToggleButtonWrapper>
-          <ToggleButton
-            $active={isSignUp}
+        <div className="register-toggle-button-wrapper">
+          <button
+            className={`register-toggle-button ${isSignUp ? 'active' : ''}`}
             onClick={() => {
               setIsSignUp(true);
               setError("");
@@ -99,9 +99,9 @@ const RegisterPage = () => {
             disabled={isLoading}
           >
             Sign Up
-          </ToggleButton>
-          <ToggleButton
-            $active={!isSignUp}
+          </button>
+          <button
+            className={`register-toggle-button ${!isSignUp ? 'active' : ''}`}
             onClick={() => {
               setIsSignUp(false);
               setError("");
@@ -109,8 +109,8 @@ const RegisterPage = () => {
             disabled={isLoading}
           >
             Sign In
-          </ToggleButton>
-        </ToggleButtonWrapper>
+          </button>
+        </div>
 
         {isSignUp ? (
           <SignUpForm
@@ -120,7 +120,7 @@ const RegisterPage = () => {
           />
         ) : (
           <>
-            {error && <ErrorMessage>{error}</ErrorMessage>}
+            {error && <div className="register-error-message">{error}</div>}
             <SignInForm onSubmit={handleSignIn} isLoading={isLoading} />
           </>
         )}
@@ -134,90 +134,13 @@ const RegisterPage = () => {
         >
           Back to Home
         </Button>
-      </Overlay>
+      </div>
 
-      <TargetWrapper>
+      <div className="register-target-wrapper">
         <Target showAnimations={false} />
-      </TargetWrapper>
-    </RegisterWrapper>
+      </div>
+    </div>
   );
 };
-
-const RegisterWrapper = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background: linear-gradient(135deg, #4a148c, #880e4f);
-`;
-
-const Overlay = styled.div`
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-  padding: 3rem;
-  text-align: center;
-  color: white;
-  border-radius: 16px;
-  margin-right: 20px;
-  width: 420px;
-
-  h2 {
-    font-size: 2.2rem;
-    margin-bottom: 1rem;
-  }
-
-  h3 {
-    font-size: 1.1rem;
-    margin-bottom: 1.5rem;
-    text-transform: capitalize;
-  }
-
-  form {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-`;
-
-const TargetWrapper = styled.div`
-  margin-left: 20px;
-`;
-
-const ErrorMessage = styled.div`
-  color: #ff6b6b;
-  background: rgba(255, 0, 0, 0.1);
-  padding: 10px;
-  border-radius: 5px;
-  margin-bottom: 15px;
-  font-weight: bold;
-`;
-
-const ToggleButtonWrapper = styled.div`
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-`;
-
-const ToggleButton = styled.button`
-  padding: 0.5rem 1.2rem;
-  font-size: 1rem;
-  border: 2px solid white;
-  border-radius: 30px;
-  background: ${({ $active }) => ($active ? "white" : "transparent")};
-  color: ${({ $active }) => ($active ? "#4a148c" : "white")};
-  cursor: pointer;
-  transition: all 0.3s ease;
-
-  &:hover {
-    background: ${({ $active }) =>
-      $active ? "white" : "rgba(255,255,255,0.2)"};
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-`;
 
 export default RegisterPage;

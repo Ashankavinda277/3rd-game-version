@@ -2,7 +2,7 @@
 
 // src/components/auth/SignUpForm.js
 import React, { useState } from "react";
-import styled from "styled-components";
+import "../styles/pages/SignUpForm.css";
 import Button from "../components/common/Button";
 import ErrorDisplay from "../components/common/ErrorDisplay";
 // Optional reusable error component
@@ -43,7 +43,7 @@ const SignUpForm = ({ onSubmit, isLoading, error: serverError }) => {
 
   return (
     <form onSubmit={handleSubmit}>
-      {serverError && <ErrorMessage>{serverError}</ErrorMessage>}
+      {serverError && <div className="signup-error-message">{serverError}</div>}
       <InputField
         label='Username'
         name='username'
@@ -99,49 +99,17 @@ const SignUpForm = ({ onSubmit, isLoading, error: serverError }) => {
 };
 
 const InputField = ({ label, name, value, onChange, error, type = "text" }) => (
-  <Field>
+  <div className="signup-field">
     <label>{label}</label>
-    <input name={name} value={value} onChange={onChange} type={type} />
+    <input 
+      name={name} 
+      value={value} 
+      onChange={onChange} 
+      type={type} 
+      className={error ? 'error' : ''}
+    />
     {error && <span>{error}</span>}
-  </Field>
+  </div>
 );
-
-const Field = styled.div`
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 1rem;
-
-  label {
-    font-weight: bold;
-    margin-bottom: 0.5rem;
-    color: white;
-  }
-
-  input {
-    padding: 0.5rem;
-    font-size: 1.1rem;
-    border: 1px solid ${(props) => (props.error ? "#ff6b6b" : "#ccc")};
-    border-radius: 5px;
-    background: white;
-    color: #333;
-  }
-
-  span {
-    color: #ff6b6b;
-    font-size: 0.9rem;
-    margin-top: 0.2rem;
-  }
-`;
-
-const ErrorMessage = styled.div`
-  color: #ff6b6b;
-  background: rgba(255, 107, 107, 0.1);
-  padding: 0.75rem;
-  border-radius: 5px;
-  margin-bottom: 1rem;
-  font-weight: bold;
-  text-align: center;
-  border: 1px solid rgba(255, 107, 107, 0.3);
-`;
 
 export default SignUpForm;

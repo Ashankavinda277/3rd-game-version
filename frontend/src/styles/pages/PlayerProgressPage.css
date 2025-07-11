@@ -1,0 +1,278 @@
+/* PlayerProgressPage Component Styles */
+
+.player-progress-wrapper {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 2rem;
+  color: white;
+}
+
+.player-progress-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.player-progress-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.player-progress-title {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  color: #fff;
+}
+
+.player-progress-subtitle {
+  font-size: 1.2rem;
+  opacity: 0.9;
+}
+
+.player-progress-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 50vh;
+}
+
+.player-progress-error {
+  text-align: center;
+  color: #ff6b6b;
+  font-size: 1.2rem;
+  background: rgba(255, 107, 107, 0.1);
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 2rem 0;
+}
+
+.player-progress-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.player-progress-stat-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  padding: 1.5rem;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.player-progress-stat-value {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #ffd700;
+  margin-bottom: 0.5rem;
+}
+
+.player-progress-stat-label {
+  font-size: 1rem;
+  opacity: 0.9;
+}
+
+.player-progress-games-section {
+  margin: 3rem 0;
+}
+
+.player-progress-section-title {
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.player-progress-games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.player-progress-game-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.player-progress-game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.player-progress-game-score {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #ffd700;
+}
+
+.player-progress-game-mode {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.3rem 0.8rem;
+  border-radius: 15px;
+  font-size: 0.9rem;
+  text-transform: capitalize;
+}
+
+.player-progress-game-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.player-progress-game-stat {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.player-progress-game-date {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  text-align: right;
+}
+
+.player-progress-no-games {
+  text-align: center;
+  font-size: 1.2rem;
+  opacity: 0.8;
+  padding: 3rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+}
+
+.player-progress-sensor-section {
+  margin: 3rem 0;
+  text-align: center;
+}
+
+.player-progress-sensor-data {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: inline-block;
+  min-width: 200px;
+}
+
+.player-progress-sensor-status {
+  margin-bottom: 1rem;
+}
+
+.player-progress-sensor-status.connected {
+  color: #27ae60;
+}
+
+.player-progress-sensor-status.disconnected {
+  color: #e74c3c;
+}
+
+.player-progress-navigation {
+  text-align: center;
+  margin: 3rem 0;
+}
+
+.player-progress-nav-button {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  margin: 0 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.player-progress-nav-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.player-progress-history-section {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 2rem 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.player-progress-history-title {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  color: #e67e22;
+}
+
+.player-progress-chart-container {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  height: 200px;
+  padding: 1rem 0;
+  margin-bottom: 2rem;
+}
+
+.player-progress-chart-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 40px;
+}
+
+.player-progress-bar {
+  position: relative;
+  width: 100%;
+  background: linear-gradient(to top, #3498db, #2ecc71);
+  border-radius: 3px;
+  min-height: 5px;
+}
+
+.player-progress-bar-value {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  color: #3498db;
+}
+
+.player-progress-bar-label {
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  transform: rotate(-45deg);
+  color: #bdc3c7;
+}
+
+.player-progress-games-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.player-progress-games-table th,
+.player-progress-games-table td {
+  padding: 0.8rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.player-progress-games-table th {
+  background: rgba(0, 0, 0, 0.2);
+  font-weight: 600;
+}
+
+.player-progress-games-table tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.player-progress-no-data {
+  text-align: center;
+  padding: 2rem;
+  color: #bdc3c7;
+}

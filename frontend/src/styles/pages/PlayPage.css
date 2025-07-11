@@ -1,0 +1,162 @@
+/* PlayPage Component Styles */
+
+.game-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #232526 0%, #414345 100%);
+}
+
+.game-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100vw;
+  max-width: 900px;
+  padding: 32px 32px 0 32px;
+}
+
+.game-score {
+  font-size: 2rem;
+  color: #ffd700;
+  font-weight: 700;
+}
+
+.game-timer {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.game-timer.low {
+  color: #e74c3c;
+}
+
+.game-timer:not(.low) {
+  color: #27ae60;
+}
+
+.game-area {
+  position: relative;
+  width: 800px;
+  height: 500px;
+  background: #222c;
+  border-radius: 18px;
+  margin-top: 32px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px #0005;
+  cursor: crosshair;
+}
+
+.game-hit-dot {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(46, 204, 113, 0.8);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.game-miss-dot {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(231, 76, 60, 0.7);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.game-controls {
+  display: flex;
+  gap: 16px;
+}
+
+.game-button {
+  font-size: 16px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+}
+
+.game-button.pause {
+  background: #f39c12;
+  margin-right: 8px;
+}
+
+.game-button.quit {
+  background: #e74c3c;
+}
+
+.game-pause-container {
+  color: #fff;
+  margin-top: 64px;
+  font-size: 32px;
+  text-align: center;
+}
+
+.game-pause-title {
+  margin-bottom: 32px;
+}
+
+.game-resume-button {
+  margin-top: 32px;
+  font-size: 20px;
+  padding: 12px 32px;
+  border-radius: 8px;
+  border: none;
+  background: #27ae60;
+  color: #fff;
+  cursor: pointer;
+}
+
+.game-quit-button {
+  margin-top: 24px;
+  margin-left: 16px;
+  font-size: 18px;
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: none;
+  background: #e74c3c;
+  color: #fff;
+  cursor: pointer;
+}
+
+.game-finished-container {
+  color: #fff;
+  margin-top: 32px;
+  font-size: 24px;
+  text-align: center;
+}
+
+.game-finished-title {
+  margin-bottom: 16px;
+}
+
+.game-stats {
+  margin: 16px 0;
+  font-size: 22px;
+}
+
+.game-stats b {
+  font-weight: bold;
+}
+
+.game-play-again-button {
+  margin-top: 24px;
+  font-size: 18px;
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: none;
+  background: #27ae60;
+  color: #fff;
+  cursor: pointer;
+}
+
+.game-loading-fallback {
+  color: red;
+  font-size: 24px;
+}

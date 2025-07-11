@@ -1,5 +1,5 @@
 import React from 'react';
-import './Header.css';
+import '../../../styles/components/layout/Header.css';
 
 /**
  * Header component that displays the game title

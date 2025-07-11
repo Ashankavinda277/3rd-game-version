@@ -1,0 +1,46 @@
+/* SignUpForm Component Styles */
+
+.signup-field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+
+.signup-field label {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  color: white;
+}
+
+.signup-field input {
+  padding: 0.5rem;
+  font-size: 1.1rem;
+  border-radius: 5px;
+  background: white;
+  color: #333;
+}
+
+.signup-field input.error {
+  border: 1px solid #ff6b6b;
+}
+
+.signup-field input:not(.error) {
+  border: 1px solid #ccc;
+}
+
+.signup-field span {
+  color: #ff6b6b;
+  font-size: 0.9rem;
+  margin-top: 0.2rem;
+}
+
+.signup-error-message {
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.1);
+  padding: 0.75rem;
+  border-radius: 5px;
+  margin-bottom: 1rem;
+  font-weight: bold;
+  text-align: center;
+  border: 1px solid rgba(255, 107, 107, 0.3);
+}
