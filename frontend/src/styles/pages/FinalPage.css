@@ -1,0 +1,65 @@
+/* FinalPage Component Styles */
+
+.final-page-wrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100vw;
+  height: 100vh;
+  background: url('https://c4.wallpaperflare.com/wallpaper/229/473/231/religion-jesus-christ-cross-flower-of-life-wallpaper-preview.jpg') no-repeat center center;
+  background-size: cover;
+  text-align: center;
+  color: white;
+}
+
+.final-page-header {
+  font-size: 4rem;
+  margin-bottom: 2rem;
+  color: gold;
+}
+
+.final-page-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.final-page-overlay {
+  background: silver;
+  padding: 2rem;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.final-page-button-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.final-page-button {
+  width: 250px;
+  padding: 20px;
+  font-size: 1.5rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(to right, #27ae60, #219a52);
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.final-page-button:hover {
+  transform: scale(1.05);
+}
+
+.final-page-loader-wrapper {
+  margin-top: 20px;
+}
+
+.final-page-styled-loader {
+  transform: scale(0.5);
+}

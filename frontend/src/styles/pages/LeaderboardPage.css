@@ -1,0 +1,141 @@
+/* LeaderboardPage Component Styles */
+
+.leaderboard-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #2c3e50 0%, #1a1a2e 100%);
+  color: white;
+  padding: 2rem;
+}
+
+.leaderboard-header-section {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.leaderboard-title {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  color: gold;
+}
+
+.leaderboard-mode-toggle {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+  gap: 1rem;
+}
+
+.leaderboard-mode-button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 30px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.leaderboard-mode-button.active {
+  background: #27ae60;
+}
+
+.leaderboard-mode-button:not(.active) {
+  background: #34495e;
+}
+
+.leaderboard-mode-button:hover {
+  transform: translateY(-2px);
+}
+
+.leaderboard-mode-button.active:hover {
+  background: #219a52;
+}
+
+.leaderboard-mode-button:not(.active):hover {
+  background: #2c3e50;
+}
+
+.leaderboard-content-section {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.leaderboard-table {
+  width: 100%;
+  max-width: 900px;
+  border-collapse: collapse;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.leaderboard-table th,
+.leaderboard-table td {
+  padding: 1rem;
+  text-align: center;
+}
+
+.leaderboard-table th {
+  background: rgba(0, 0, 0, 0.4);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.leaderboard-table tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.leaderboard-table tbody tr:nth-child(1) td {
+  background: rgba(255, 215, 0, 0.1); /* Gold for first place */
+}
+
+.leaderboard-table tbody tr:nth-child(2) td {
+  background: rgba(192, 192, 192, 0.1); /* Silver for second place */
+}
+
+.leaderboard-table tbody tr:nth-child(3) td {
+  background: rgba(205, 127, 50, 0.1); /* Bronze for third place */
+}
+
+.leaderboard-error-message {
+  padding: 1rem;
+  background: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
+  border-radius: 5px;
+  text-align: center;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.leaderboard-loader-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+}
+
+.leaderboard-buttons-section {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+  gap: 1rem;
+}
+
+.leaderboard-button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 5px;
+  background: #3498db;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.leaderboard-button:hover {
+  transform: translateY(-2px);
+  background: #2980b9;
+}

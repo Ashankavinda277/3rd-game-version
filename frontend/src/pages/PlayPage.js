@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import styled from 'styled-components';
+import '../styles/pages/PlayPage.css';
 import { useGameContext } from '../contexts/GameContext';
 import Target from '../components/common/Target';
 import { submitScore } from '../services/api';
@@ -40,68 +40,6 @@ const DIFFICULTY_SETTINGS = {
     targetColors: ['#e74c3c', '#3498db', '#e67e22']
   }
 };
-
-// Styled Components for Game UI (must be defined before use)
-const GameWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #232526 0%, #414345 100%);
-`;
-
-const TopBar = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100vw;
-  max-width: 900px;
-  padding: 32px 32px 0 32px;
-`;
-
-const Score = styled.div`
-  font-size: 2rem;
-  color: #ffd700;
-  font-weight: 700;
-`;
-
-const Timer = styled.div`
-  font-size: 2rem;
-  color: ${props => props.$low ? '#e74c3c' : '#27ae60'};
-  font-weight: 700;
-`;
-
-const GameArea = styled.div`
-  position: relative;
-  width: 800px;
-  height: 500px;
-  background: #222c;
-  border-radius: 18px;
-  margin-top: 32px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px #0005;
-  cursor: crosshair;
-`;
-
-const HitDot = styled.div`
-  position: absolute;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: rgba(46, 204, 113, 0.8);
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-`;
-
-const MissDot = styled.div`
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: rgba(231, 76, 60, 0.7);
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-`;
 
 const PlayPage = () => {
   const { user, gameMode, gameSettings, setNeedsRefresh, loading } = useGameContext();
@@ -417,7 +355,7 @@ const PlayPage = () => {
   return (
     <>
       {showFinal && !finalPageStart ? (
-        <React.Suspense fallback={<div style={{color:'red',fontSize:24}}>Loading game page...</div>}>
+        <React.Suspense fallback={<div className="game-loading-fallback">Loading game page...</div>}>
           <FinalPage
             onStart={() => {
               setShowFinal(false);
@@ -431,36 +369,19 @@ const PlayPage = () => {
           />
         </React.Suspense>
       ) : gameState === 'playing' ? (
-        <GameWrapper>
-          <TopBar>
-            <Score>Score: {score}</Score>
-            <Timer $low={timeLeft <= GAME_CONSTANTS.RED_TIME_THRESHOLD}>{timeLeft}s</Timer>
-            <div style={{ display: 'flex', gap: 16 }}>
+        <div className="game-wrapper">
+          <div className="game-top-bar">
+            <div className="game-score">Score: {score}</div>
+            <div className={`game-timer ${timeLeft <= GAME_CONSTANTS.RED_TIME_THRESHOLD ? 'low' : ''}`}>{timeLeft}s</div>
+            <div className="game-controls">
               <button
-                style={{
-                  fontSize: 16,
-                  padding: '8px 18px',
-                  borderRadius: 8,
-                  border: 'none',
-                  background: '#f39c12',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  marginRight: 8
-                }}
+                className="game-button pause"
                 onClick={pauseGame}
               >
                 Pause
               </button>
               <button
-                style={{
-                  fontSize: 16,
-                  padding: '8px 18px',
-                  borderRadius: 8,
-                  border: 'none',
-                  background: '#e74c3c',
-                  color: '#fff',
-                  cursor: 'pointer'
-                }}
+                className="game-button quit"
                 onClick={() => {
                   // End game and show results
                   endGame();
@@ -469,8 +390,8 @@ const PlayPage = () => {
                 Quit
               </button>
             </div>
-          </TopBar>
-          <GameArea ref={gameAreaRef} onClick={handleGameAreaClick}>
+          </div>
+          <div className="game-area" ref={gameAreaRef} onClick={handleGameAreaClick}>
             {targets.map(target => (
               <Target
                 key={target.id}
@@ -485,43 +406,43 @@ const PlayPage = () => {
               />
             ))}
             {hitPositions.map(hit => (
-              <HitDot key={hit.id} style={{ left: hit.x, top: hit.y }} />
+              <div key={hit.id} className="game-hit-dot" style={{ left: hit.x, top: hit.y }} />
             ))}
             {missPositions.map(miss => (
-              <MissDot key={miss.id} style={{ left: miss.x, top: miss.y }} />
+              <div key={miss.id} className="game-miss-dot" style={{ left: miss.x, top: miss.y }} />
             ))}
-          </GameArea>
-        </GameWrapper>
+          </div>
+        </div>
       ) : gameState === 'paused' ? (
-        <GameWrapper>
-          <TopBar>
-            <Score>Score: {score}</Score>
-            <Timer $low={timeLeft <= GAME_CONSTANTS.RED_TIME_THRESHOLD}>{timeLeft}s</Timer>
-          </TopBar>
-          <div style={{ color: '#fff', marginTop: 64, fontSize: 32, textAlign: 'center' }}>
-            <div>Game Paused</div>
+        <div className="game-wrapper">
+          <div className="game-top-bar">
+            <div className="game-score">Score: {score}</div>
+            <div className={`game-timer ${timeLeft <= GAME_CONSTANTS.RED_TIME_THRESHOLD ? 'low' : ''}`}>{timeLeft}s</div>
+          </div>
+          <div className="game-pause-container">
+            <div className="game-pause-title">Game Paused</div>
             <button
-              style={{ marginTop: 32, fontSize: 20, padding: '12px 32px', borderRadius: 8, border: 'none', background: '#27ae60', color: '#fff', cursor: 'pointer' }}
+              className="game-resume-button"
               onClick={pauseGame}
             >
               Resume
             </button>
             <button
-              style={{ marginTop: 24, marginLeft: 16, fontSize: 18, padding: '10px 24px', borderRadius: 8, border: 'none', background: '#e74c3c', color: '#fff', cursor: 'pointer' }}
+              className="game-quit-button"
               onClick={endGame}
             >
               Quit
             </button>
           </div>
-        </GameWrapper>
+        </div>
       ) : gameState === 'finished' ? (
-        <GameWrapper>
-          <TopBar>
-            <Score>Final Score: {score}</Score>
-          </TopBar>
-          <div style={{ color: '#fff', marginTop: 32, fontSize: 24, textAlign: 'center' }}>
-            <div>Game Over!</div>
-            <div style={{ margin: '16px 0', fontSize: 22 }}>
+        <div className="game-wrapper">
+          <div className="game-top-bar">
+            <div className="game-score">Final Score: {score}</div>
+          </div>
+          <div className="game-finished-container">
+            <div className="game-finished-title">Game Over!</div>
+            <div className="game-stats">
               <b>Player:</b> {user?.username || 'Guest'}<br />
               <b>Game Mode:</b> {gameMode || 'easy'}<br />
               <b>Score:</b> {score}
@@ -530,7 +451,7 @@ const PlayPage = () => {
             <div>Hits per Second: {gameStats.hitsPerSecond.toFixed(2)}</div>
             <div>Total Hits: {gameStats.totalHits}</div>
             <button
-              style={{ marginTop: 24, fontSize: 18, padding: '10px 24px', borderRadius: 8, border: 'none', background: '#27ae60', color: '#fff', cursor: 'pointer' }}
+              className="game-play-again-button"
               onClick={() => {
                 setShowFinal(true);
                 setFinalPageStart(false);
@@ -540,7 +461,7 @@ const PlayPage = () => {
               Play Again
             </button>
           </div>
-        </GameWrapper>
+        </div>
       ) : null}
     </>
   );

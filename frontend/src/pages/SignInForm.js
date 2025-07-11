@@ -1,6 +1,6 @@
 // src/components/auth/SignInForm.js
 import React, { useState } from 'react';
-import styled from 'styled-components';
+import '../styles/pages/SignInForm.css';
 import Button from '../components/common/Button';
 
 
@@ -39,32 +39,17 @@ const SignInForm = ({ onSubmit, isLoading }) => {
 };
 
 const InputField = ({ label, name, value, onChange, error, type = 'text' }) => (
-  <Field>
+  <div className="signin-field">
     <label>{label}</label>
-    <input name={name} value={value} onChange={onChange} type={type} />
+    <input 
+      name={name} 
+      value={value} 
+      onChange={onChange} 
+      type={type} 
+      className={error ? 'error' : ''}
+    />
     {error && <span>{error}</span>}
-  </Field>
+  </div>
 );
-
-const Field = styled.div`
-  display: flex;
-  flex-direction: column;
-
-  label {
-    font-weight: bold;
-  }
-
-  input {
-    padding: 0.5rem;
-    font-size: 1.1rem;
-    border: 1px solid ${props => (props.error ? '#ff6b6b' : '#ccc')};
-    border-radius: 5px;
-  }
-
-  span {
-    color: #ff6b6b;
-    font-size: 0.9rem;
-  }
-`;
 
 export default SignInForm;

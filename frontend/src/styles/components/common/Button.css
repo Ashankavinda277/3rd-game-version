@@ -1,0 +1,89 @@
+/* Button Component Styles */
+
+.button {
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: inline-block;
+  text-align: center;
+}
+
+/* Size variations */
+.button--small {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.button--medium {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+}
+
+.button--large {
+  padding: 1rem 2rem;
+  font-size: 1.25rem;
+}
+
+/* Variant styles */
+.button--primary {
+  background: linear-gradient(to right, #27ae60, #219a52);
+  color: white;
+}
+
+.button--primary:hover:not(:disabled) {
+  background: linear-gradient(to right, #219a52, #1e8449);
+}
+
+.button--secondary {
+  background: linear-gradient(to right, #3498db, #2980b9);
+  color: white;
+}
+
+.button--secondary:hover:not(:disabled) {
+  background: linear-gradient(to right, #2980b9, #2471a3);
+}
+
+.button--danger {
+  background: linear-gradient(to right, #e74c3c, #c0392b);
+  color: white;
+}
+
+.button--danger:hover:not(:disabled) {
+  background: linear-gradient(to right, #c0392b, #a93226);
+}
+
+.button--outline {
+  background: transparent;
+  color: #2c3e50;
+  border: 2px solid #2c3e50;
+}
+
+.button--outline:hover:not(:disabled) {
+  background: rgba(44, 62, 80, 0.1);
+}
+
+/* Full width */
+.button--full-width {
+  width: 100%;
+}
+
+/* Disabled state */
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  filter: grayscale(40%);
+}
+
+/* Hover transform effect */
+.button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Active state */
+.button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}

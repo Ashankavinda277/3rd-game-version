@@ -1,0 +1,29 @@
+/* SignInForm Component Styles */
+
+.signin-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.signin-field label {
+  font-weight: bold;
+}
+
+.signin-field input {
+  padding: 0.5rem;
+  font-size: 1.1rem;
+  border-radius: 5px;
+}
+
+.signin-field input.error {
+  border: 1px solid #ff6b6b;
+}
+
+.signin-field input:not(.error) {
+  border: 1px solid #ccc;
+}
+
+.signin-field span {
+  color: #ff6b6b;
+  font-size: 0.9rem;
+}

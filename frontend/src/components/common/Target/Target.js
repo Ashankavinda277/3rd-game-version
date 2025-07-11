@@ -1,5 +1,5 @@
 import React from 'react';
-import './Target.css';
+import '../../../styles/components/common/Target.css';
 
 /**
  * Target component that displays a shooting target with optional animations

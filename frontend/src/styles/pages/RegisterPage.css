@@ -1,0 +1,89 @@
+/* RegisterPage Component Styles */
+
+.register-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: linear-gradient(135deg, #4a148c, #880e4f);
+}
+
+.register-overlay {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  padding: 3rem;
+  text-align: center;
+  color: white;
+  border-radius: 16px;
+  margin-right: 20px;
+  width: 420px;
+}
+
+.register-overlay h2 {
+  font-size: 2.2rem;
+  margin-bottom: 1rem;
+}
+
+.register-overlay h3 {
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+  text-transform: capitalize;
+}
+
+.register-overlay form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.register-target-wrapper {
+  margin-left: 20px;
+}
+
+.register-error-message {
+  color: #ff6b6b;
+  background: rgba(255, 0, 0, 0.1);
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 15px;
+  font-weight: bold;
+}
+
+.register-toggle-button-wrapper {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.register-toggle-button {
+  padding: 0.5rem 1.2rem;
+  font-size: 1rem;
+  border: 2px solid white;
+  border-radius: 30px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.register-toggle-button.active {
+  background: white;
+  color: #4a148c;
+}
+
+.register-toggle-button:not(.active) {
+  background: transparent;
+  color: white;
+}
+
+.register-toggle-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.register-toggle-button.active:hover {
+  background: white;
+}
+
+.register-toggle-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
