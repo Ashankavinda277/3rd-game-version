@@ -1,5 +1,3 @@
-// 🕹️ PlayPage.jsx
-
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/pages/PlayPage.css';
@@ -41,9 +39,33 @@ const DIFFICULTY_SETTINGS = {
   }
 };
 
+// Enhanced Game Info Component
+const GameInfoPanel = ({ score, gameMode, timeLeft }) => {
+  const isRed = timeLeft <= GAME_CONSTANTS.RED_TIME_THRESHOLD;
+  const shouldBlink = timeLeft <= GAME_CONSTANTS.BLINK_TIME_THRESHOLD;
+  
+  return (
+    <div className="game-info-panel">
+      <div className="info-card score-card">
+        <div className="info-label">Score</div>
+        <div className="info-value score-value">{score}</div>
+      </div>
+      <div className="info-card mode-card">
+        <div className="info-label">Mode</div>
+        <div className="info-value mode-value">{gameMode || 'easy'}</div>
+      </div>
+      <div className="info-card time-card">
+        <div className="info-label">Time Left</div>
+        <div className={`info-value time-value ${isRed ? 'red' : ''} ${shouldBlink ? 'blink' : ''}`}>
+          {timeLeft}s
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const PlayPage = () => {
   const { user, gameMode, gameSettings, setNeedsRefresh, loading } = useGameContext();
-  // ...existing code...
   const [gameState, setGameState] = useState('ready');
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -68,8 +90,6 @@ const PlayPage = () => {
   const wsRef = useRef(null);
 
   const navigate = useNavigate();
-  // ...existing code...
-
 
   // Only redirect if user is explicitly null/false, not undefined (undefined = still loading)
   React.useEffect(() => {
@@ -369,29 +389,29 @@ const PlayPage = () => {
           />
         </React.Suspense>
       ) : gameState === 'playing' ? (
-        <div className="game-wrapper">
-          <div className="game-top-bar">
-            <div className="game-score">Score: {score}</div>
-            <div className={`game-timer ${timeLeft <= GAME_CONSTANTS.RED_TIME_THRESHOLD ? 'low' : ''}`}>{timeLeft}s</div>
+        <div className="game-container">
+          <div className="game-header">
+            <GameInfoPanel 
+              score={score} 
+              gameMode={gameMode} 
+              timeLeft={timeLeft} 
+            />
             <div className="game-controls">
-              <button
-                className="game-button pause"
-                onClick={pauseGame}
-              >
-                Pause
+              <button className="control-btn pause-btn" onClick={pauseGame}>
+                <span className="btn-icon">⏸</span>
+                <span className="btn-text">Pause</span>
               </button>
-              <button
-                className="game-button quit"
-                onClick={() => {
-                  // End game and show results
-                  endGame();
-                }}
-              >
-                Quit
+              <button className="control-btn quit-btn" onClick={endGame}>
+                <span className="btn-icon">✕</span>
+                <span className="btn-text">Quit</span>
               </button>
             </div>
           </div>
+          
           <div className="game-area" ref={gameAreaRef} onClick={handleGameAreaClick}>
+            <div className="game-area-overlay">
+              <div className="crosshair"></div>
+            </div>
             {targets.map(target => (
               <Target
                 key={target.id}
@@ -406,60 +426,86 @@ const PlayPage = () => {
               />
             ))}
             {hitPositions.map(hit => (
-              <div key={hit.id} className="game-hit-dot" style={{ left: hit.x, top: hit.y }} />
+              <div key={hit.id} className="hit-indicator" style={{ left: hit.x, top: hit.y }}>
+                <div className="hit-ripple"></div>
+              </div>
             ))}
             {missPositions.map(miss => (
-              <div key={miss.id} className="game-miss-dot" style={{ left: miss.x, top: miss.y }} />
+              <div key={miss.id} className="miss-indicator" style={{ left: miss.x, top: miss.y }}>
+                <div className="miss-cross"></div>
+              </div>
             ))}
           </div>
         </div>
       ) : gameState === 'paused' ? (
-        <div className="game-wrapper">
-          <div className="game-top-bar">
-            <div className="game-score">Score: {score}</div>
-            <div className={`game-timer ${timeLeft <= GAME_CONSTANTS.RED_TIME_THRESHOLD ? 'low' : ''}`}>{timeLeft}s</div>
-          </div>
-          <div className="game-pause-container">
-            <div className="game-pause-title">Game Paused</div>
-            <button
-              className="game-resume-button"
-              onClick={pauseGame}
-            >
-              Resume
-            </button>
-            <button
-              className="game-quit-button"
-              onClick={endGame}
-            >
-              Quit
-            </button>
+        <div className="game-container">
+          <div className="pause-overlay">
+            <div className="pause-content">
+              <h2 className="pause-title">Game Paused</h2>
+              <div className="pause-buttons">
+                <button className="pause-action-btn resume-btn" onClick={pauseGame}>
+                  <span className="btn-icon">▶</span>
+                  <span className="btn-text">Resume</span>
+                </button>
+                <button className="pause-action-btn quit-btn" onClick={endGame}>
+                  <span className="btn-icon">✕</span>
+                  <span className="btn-text">Quit</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       ) : gameState === 'finished' ? (
-        <div className="game-wrapper">
-          <div className="game-top-bar">
-            <div className="game-score">Final Score: {score}</div>
-          </div>
-          <div className="game-finished-container">
-            <div className="game-finished-title">Game Over!</div>
-            <div className="game-stats">
-              <b>Player:</b> {user?.username || 'Guest'}<br />
-              <b>Game Mode:</b> {gameMode || 'easy'}<br />
-              <b>Score:</b> {score}
+        <div className="game-container">
+          <div className="game-over-overlay">
+            <div className="game-over-content">
+              <div className="final-score-display">
+                <h1 className="final-score-text">Final Score: {score}</h1>
+              </div>
+              
+              <div className="game-over-header">
+                <h2 className="game-over-title">Game Over!</h2>
+              </div>
+              
+              <div className="game-results">
+                <div className="result-item">
+                  <span className="result-label">Player:</span>
+                  <span className="result-value">{user?.username || 'Guest'}</span>
+                </div>
+                <div className="result-item">
+                  <span className="result-label">Game Mode:</span>
+                  <span className="result-value">{gameMode || 'easy'}</span>
+                </div>
+                <div className="result-item">
+                  <span className="result-label">Score:</span>
+                  <span className="result-value">{score}</span>
+                </div>
+                <div className="result-item">
+                  <span className="result-label">Accuracy:</span>
+                  <span className="result-value">{gameStats.accuracy.toFixed(1)}%</span>
+                </div>
+                <div className="result-item">
+                  <span className="result-label">Hits per Second:</span>
+                  <span className="result-value">{gameStats.hitsPerSecond.toFixed(2)}</span>
+                </div>
+                <div className="result-item">
+                  <span className="result-label">Total Hits:</span>
+                  <span className="result-value">{gameStats.totalHits}</span>
+                </div>
+              </div>
+              
+              <button
+                className="play-again-btn"
+                onClick={() => {
+                  setShowFinal(true);
+                  setFinalPageStart(false);
+                  setGameState('ready');
+                }}
+              >
+                <span className="btn-icon">🔄</span>
+                <span className="btn-text">Play Again</span>
+              </button>
             </div>
-            <div>Accuracy: {gameStats.accuracy.toFixed(1)}%</div>
-            <div>Hits per Second: {gameStats.hitsPerSecond.toFixed(2)}</div>
-            <div>Total Hits: {gameStats.totalHits}</div>
-            <button
-              className="game-play-again-button"
-              onClick={() => {
-                setShowFinal(true);
-                setFinalPageStart(false);
-                setGameState('ready');
-              }}
-            >
-              Play Again
-            </button>
           </div>
         </div>
       ) : null}
