@@ -85,59 +85,84 @@ const RegisterPage = () => {
 
   return (
     <div className="register-wrapper">
-      <div className="register-overlay">
-        <h2>{isSignUp ? "Sign Up" : "Sign In"}</h2>
-        <h3>Welcome to Smart Shooting Gallery!</h3>
+      <div className="register-content">
+        <div className="register-overlay">
+          <div className="register-header">
+            <h2 className="register-title">
+              {isSignUp ? "Create Account" : "Welcome Back"}
+            </h2>
+            <h3 className="register-subtitle">
+              {isSignUp 
+                ? "Join the Smart Shooting Gallery" 
+                : "Sign in to continue your journey"
+              }
+            </h3>
+          </div>
 
-        <div className="register-toggle-button-wrapper">
-          <button
-            className={`register-toggle-button ${isSignUp ? 'active' : ''}`}
-            onClick={() => {
-              setIsSignUp(true);
-              setError("");
-            }}
-            disabled={isLoading}
-          >
-            Sign Up
-          </button>
-          <button
-            className={`register-toggle-button ${!isSignUp ? 'active' : ''}`}
-            onClick={() => {
-              setIsSignUp(false);
-              setError("");
-            }}
-            disabled={isLoading}
-          >
-            Sign In
-          </button>
+          <div className="register-toggle-container">
+            <div className="register-toggle-wrapper">
+              <button
+                className={`register-toggle-button ${isSignUp ? 'active' : ''}`}
+                onClick={() => {
+                  setIsSignUp(true);
+                  setError("");
+                }}
+                disabled={isLoading}
+              >
+                <span className="button-text">Sign Up</span>
+              </button>
+              <button
+                className={`register-toggle-button ${!isSignUp ? 'active' : ''}`}
+                onClick={() => {
+                  setIsSignUp(false);
+                  setError("");
+                }}
+                disabled={isLoading}
+              >
+                <span className="button-text">Sign In</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="register-form-container">
+            {isSignUp ? (
+              <SignUpForm
+                onSubmit={handleSignUp}
+                isLoading={isLoading}
+                error={error}
+              />
+            ) : (
+              <>
+                {error && (
+                  <div className="register-error-message">
+                    <span className="error-icon">⚠️</span>
+                    {error}
+                  </div>
+                )}
+                <SignInForm onSubmit={handleSignIn} isLoading={isLoading} />
+              </>
+            )}
+          </div>
+
+          <div className="register-back-button">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => navigate("/")}
+              disabled={isLoading}
+              fullWidth
+            >
+              <span className="back-icon">←</span>
+              Back to Home
+            </Button>
+          </div>
         </div>
 
-        {isSignUp ? (
-          <SignUpForm
-            onSubmit={handleSignUp}
-            isLoading={isLoading}
-            error={error}
-          />
-        ) : (
-          <>
-            {error && <div className="register-error-message">{error}</div>}
-            <SignInForm onSubmit={handleSignIn} isLoading={isLoading} />
-          </>
-        )}
-
-        <Button
-          variant="outline"
-          type="button"
-          onClick={() => navigate("/")}
-          disabled={isLoading}
-          fullWidth
-        >
-          Back to Home
-        </Button>
-      </div>
-
-      <div className="register-target-wrapper">
-        <Target showAnimations={false} />
+        <div className="register-target-wrapper">
+          <div className="target-glow">
+            <Target showAnimations={false} />
+          </div>
+        </div>
       </div>
     </div>
   );

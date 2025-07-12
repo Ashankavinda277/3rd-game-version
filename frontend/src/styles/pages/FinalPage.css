@@ -1,4 +1,4 @@
-/* FinalPage Component Styles */
+/* FinalPage Component Styles - IGI Color Theme */
 
 .final-page-wrapper {
   display: flex;
@@ -7,16 +7,16 @@
   align-items: center;
   width: 100vw;
   height: 100vh;
-  background: url('https://c4.wallpaperflare.com/wallpaper/229/473/231/religion-jesus-christ-cross-flower-of-life-wallpaper-preview.jpg') no-repeat center center;
-  background-size: cover;
+  background: linear-gradient(135deg, #0a0a0a 0%, #2d2d2d 100%);
   text-align: center;
-  color: white;
+  color: #39ff14; /* neon green */
 }
 
 .final-page-header {
   font-size: 4rem;
   margin-bottom: 2rem;
-  color: gold;
+  color: #00ff41; /* accent green */
+  text-shadow: 0 0 10px rgba(57, 255, 20, 0.6);
 }
 
 .final-page-content-wrapper {
@@ -26,12 +26,14 @@
 }
 
 .final-page-overlay {
-  background: silver;
+  background: rgba(45, 45, 45, 0.9); /* dark overlay */
   padding: 2rem;
   border-radius: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  border: 1px solid rgba(0, 255, 65, 0.3); /* shadow-green */
+  box-shadow: 0 0 20px rgba(57, 255, 20, 0.2); /* glow-green */
 }
 
 .final-page-button-container {
@@ -44,16 +46,20 @@
   width: 250px;
   padding: 20px;
   font-size: 1.5rem;
-  border: none;
+  border: 2px solid #00ff41; /* accent green border */
   border-radius: 10px;
-  background: linear-gradient(to right, #27ae60, #219a52);
-  color: white;
-  cursor: pointer;
-  transition: transform 0.2s;
+  background: linear-gradient(to right, #2d2d2d, #00ff41);
+  color: #ffffff;
+  cursor: crosshair;
+  transition: transform 0.2s, box-shadow 0.3s;
+  box-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
 }
 
 .final-page-button:hover {
   transform: scale(1.05);
+  background: linear-gradient(to right, #2d2d2d, #ff2a2a); /* red glow on hover */
+  box-shadow: 0 0 20px rgba(255, 42, 42, 0.6);
+  border-color: #ff2a2a;
 }
 
 .final-page-loader-wrapper {

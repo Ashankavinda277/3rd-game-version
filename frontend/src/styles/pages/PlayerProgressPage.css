@@ -1,10 +1,10 @@
-/* PlayerProgressPage Component Styles */
+/* PlayerProgressPage Component Styles - IGI Theme */
 
 .player-progress-wrapper {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0a0a0a 0%, #2d2d2d 100%);
   padding: 2rem;
-  color: white;
+  color: #39ff14;
 }
 
 .player-progress-container {
@@ -20,7 +20,8 @@
 .player-progress-title {
   font-size: 2.5rem;
   margin-bottom: 0.5rem;
-  color: #fff;
+  color: #00ff41;
+  text-shadow: 0 0 10px rgba(57, 255, 20, 0.6);
 }
 
 .player-progress-subtitle {
@@ -37,9 +38,9 @@
 
 .player-progress-error {
   text-align: center;
-  color: #ff6b6b;
+  color: #ff2a2a;
   font-size: 1.2rem;
-  background: rgba(255, 107, 107, 0.1);
+  background: rgba(255, 42, 42, 0.1);
   padding: 1rem;
   border-radius: 8px;
   margin: 2rem 0;
@@ -53,18 +54,18 @@
 }
 
 .player-progress-stat-card {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 255, 65, 0.05);
   backdrop-filter: blur(10px);
   padding: 1.5rem;
   border-radius: 12px;
   text-align: center;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(57, 255, 20, 0.3);
 }
 
 .player-progress-stat-value {
   font-size: 2rem;
   font-weight: bold;
-  color: #ffd700;
+  color: #00ff41;
   margin-bottom: 0.5rem;
 }
 
@@ -81,6 +82,7 @@
   font-size: 1.8rem;
   margin-bottom: 1.5rem;
   text-align: center;
+  color: #ffb000;
 }
 
 .player-progress-games-grid {
@@ -90,11 +92,11 @@
 }
 
 .player-progress-game-card {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
   padding: 1.5rem;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(0, 255, 65, 0.2);
 }
 
 .player-progress-game-header {
@@ -107,15 +109,16 @@
 .player-progress-game-score {
   font-size: 1.5rem;
   font-weight: bold;
-  color: #ffd700;
+  color: #00ff41;
 }
 
 .player-progress-game-mode {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 255, 65, 0.1);
   padding: 0.3rem 0.8rem;
   border-radius: 15px;
   font-size: 0.9rem;
   text-transform: capitalize;
+  color: #ffffff;
 }
 
 .player-progress-game-stats {
@@ -128,12 +131,14 @@
 .player-progress-game-stat {
   font-size: 0.9rem;
   opacity: 0.9;
+  color: #ffffff;
 }
 
 .player-progress-game-date {
   font-size: 0.8rem;
-  opacity: 0.7;
+  opacity: 0.6;
   text-align: right;
+  color: #ccc;
 }
 
 .player-progress-no-games {
@@ -141,8 +146,9 @@
   font-size: 1.2rem;
   opacity: 0.8;
   padding: 3rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(0, 255, 65, 0.03);
   border-radius: 12px;
+  color: #ffffff;
 }
 
 .player-progress-sensor-section {
@@ -151,13 +157,14 @@
 }
 
 .player-progress-sensor-data {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
   padding: 1.5rem;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   display: inline-block;
   min-width: 200px;
+  color: #ffffff;
 }
 
 .player-progress-sensor-status {
@@ -165,11 +172,11 @@
 }
 
 .player-progress-sensor-status.connected {
-  color: #27ae60;
+  color: #00ff41;
 }
 
 .player-progress-sensor-status.disconnected {
-  color: #e74c3c;
+  color: #ff2a2a;
 }
 
 .player-progress-navigation {
@@ -178,9 +185,9 @@
 }
 
 .player-progress-nav-button {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(0, 255, 65, 0.1);
+  color: #ffffff;
+  border: 1px solid rgba(0, 255, 65, 0.2);
   padding: 0.8rem 1.5rem;
   border-radius: 8px;
   margin: 0 0.5rem;
@@ -189,24 +196,24 @@
 }
 
 .player-progress-nav-button:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 42, 42, 0.2);
   transform: translateY(-2px);
 }
 
 .player-progress-history-section {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
   border-radius: 12px;
   padding: 1.5rem;
   margin: 2rem 0;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .player-progress-history-title {
   font-size: 1.5rem;
   margin-bottom: 1.5rem;
   text-align: center;
-  color: #e67e22;
+  color: #ffb000;
 }
 
 .player-progress-chart-container {
@@ -228,7 +235,7 @@
 .player-progress-bar {
   position: relative;
   width: 100%;
-  background: linear-gradient(to top, #3498db, #2ecc71);
+  background: linear-gradient(to top, #ff2a2a, #00ff41);
   border-radius: 3px;
   min-height: 5px;
 }
@@ -240,14 +247,14 @@
   transform: translateX(-50%);
   font-size: 0.8rem;
   white-space: nowrap;
-  color: #3498db;
+  color: #00ff41;
 }
 
 .player-progress-bar-label {
   margin-top: 0.5rem;
   font-size: 0.7rem;
   transform: rotate(-45deg);
-  color: #bdc3c7;
+  color: #cccccc;
 }
 
 .player-progress-games-table {
@@ -260,11 +267,13 @@
   padding: 0.8rem;
   text-align: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
 }
 
 .player-progress-games-table th {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(57, 255, 20, 0.1);
   font-weight: 600;
+  text-transform: uppercase;
 }
 
 .player-progress-games-table tr:hover {
@@ -274,5 +283,5 @@
 .player-progress-no-data {
   text-align: center;
   padding: 2rem;
-  color: #bdc3c7;
+  color: #999;
 }
