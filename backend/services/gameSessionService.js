@@ -40,6 +40,18 @@ class GameSessionService {
     }
   }
   
+  // Get the most recent active session (for hardware hits)
+  static async getMostRecentActiveSession() {
+    try {
+      return await GameSession.findOne({ isActive: true })
+        .sort({ startTime: -1 })
+        .limit(1);
+    } catch (error) {
+      console.error('Error getting most recent active session:', error);
+      throw error;
+    }
+  }
+  
   // Register a hit in the session
   static async registerHit(sessionId, hitData) {
     try {

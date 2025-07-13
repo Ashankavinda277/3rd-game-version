@@ -420,6 +420,180 @@ const getLeaderboard = async (req, res) => {
   }
 };
 
+// Set game mode command - Configure motors but don't start them
+const setGameMode = async (req, res) => {
+  try {
+    const { gameMode, motorSettings } = req.body;
+    
+    // Define motor settings for each game mode
+    const gameModeSettings = {
+      easy: {
+        motorSpeed: 30,     // Slow speed
+        pattern: 'linear',  // Simple linear movement
+        acceleration: 10,   // Low acceleration
+        targetSpeed: 1500   // Target movement interval
+      },
+      medium: {
+        motorSpeed: 50,     // Medium speed
+        pattern: 'wave',    // Wave pattern movement
+        acceleration: 20,   // Medium acceleration
+        targetSpeed: 1200   // Target movement interval
+      },
+      hard: {
+        motorSpeed: 80,     // High speed
+        pattern: 'random',  // Random movement pattern
+        acceleration: 30,   // High acceleration
+        targetSpeed: 800    // Target movement interval
+      }
+    };
+    
+    const selectedSettings = gameModeSettings[gameMode] || gameModeSettings.easy;
+    
+    const gameModeCommand = {
+      type: 'set_game_mode',
+      gameMode: gameMode || 'medium',
+      motorSettings: motorSettings || selectedSettings,
+      motorEnabled: false, // Motors configured but not started
+      timestamp: Date.now()
+    };
+    
+    // Send command to NodeMCU
+    const sent = broadcastToNodeMCU(gameModeCommand);
+    
+    // Also broadcast to web clients for confirmation
+    broadcastToWeb({
+      type: 'game_mode_set',
+      gameMode: gameMode,
+      motorSettings: selectedSettings,
+      timestamp: Date.now()
+    });
+    
+    if (sent) {
+      res.json({
+        success: true,
+        message: `Game mode '${gameMode}' configured on device`,
+        gameMode: gameMode,
+        motorSettings: selectedSettings,
+        command: gameModeCommand
+      });
+    } else {
+      res.status(503).json({
+        success: false,
+        message: 'No NodeMCU devices connected',
+        stats: getWebSocketStats()
+      });
+    }
+  } catch (error) {
+    console.error('Error setting game mode:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Enable motors - Start motor movement
+const enableMotors = async (req, res) => {
+  try {
+    console.log('enableMotors req.body:', req.body);
+    const { gameMode } = req.body;
+    let enabledAxes = ['x'];
+    let movement = 'linear';
+    let selectedGameMode = gameMode || 'medium';
+    if (selectedGameMode === 'medium') {
+      enabledAxes = ['x', 'y'];
+      movement = 'wave';
+    } else if (selectedGameMode === 'hard') {
+      enabledAxes = ['x', 'y'];
+      movement = 'random';
+    }
+
+    const motorEnableCommand = {
+      type: 'enable_motors',
+      gameMode: selectedGameMode,
+      motorEnabled: true,
+      enabledAxes,
+      movement,
+      timestamp: Date.now()
+    };
+
+    // Send command to NodeMCU
+    const sent = broadcastToNodeMCU(motorEnableCommand);
+
+    // Also broadcast to web clients
+    broadcastToWeb({
+      type: 'motors_enabled',
+      gameMode: selectedGameMode,
+      enabledAxes,
+      movement,
+      timestamp: Date.now()
+    });
+
+    if (sent) {
+      res.json({
+        success: true,
+        message: 'Motors enabled and started',
+        command: motorEnableCommand
+      });
+    } else {
+      res.status(503).json({
+        success: false,
+        message: 'No NodeMCU devices connected',
+        stats: getWebSocketStats()
+      });
+    }
+  } catch (error) {
+    console.error('Error enabling motors:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Disable motors - Stop motor movement
+const disableMotors = async (req, res) => {
+  try {
+    const motorDisableCommand = {
+      type: 'disable_motors',
+      motorEnabled: false,
+      timestamp: Date.now()
+    };
+    
+    // Send command to NodeMCU
+    const sent = broadcastToNodeMCU(motorDisableCommand);
+    
+    // Also broadcast to web clients
+    broadcastToWeb({
+      type: 'motors_disabled',
+      timestamp: Date.now()
+    });
+    
+    if (sent) {
+      res.json({
+        success: true,
+        message: 'Motors disabled and stopped',
+        command: motorDisableCommand
+      });
+    } else {
+      res.status(503).json({
+        success: false,
+        message: 'No NodeMCU devices connected',
+        stats: getWebSocketStats()
+      });
+    }
+  } catch (error) {
+    console.error('Error disabling motors:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   startGame,
   stopGame,
@@ -432,5 +606,8 @@ module.exports = {
   registerMiss,
   endGameSession,
   getSessionStats,
-  getLeaderboard
+  getLeaderboard,
+  setGameMode,
+  enableMotors,
+  disableMotors
 };
