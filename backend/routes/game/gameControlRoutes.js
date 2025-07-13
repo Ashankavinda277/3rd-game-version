@@ -8,6 +8,11 @@ router.post('/stop', gameControlController.stopGame);
 router.post('/reset', gameControlController.resetGame);
 router.post('/command', gameControlController.sendCommand);
 
+// Motor control routes
+router.post('/mode/set', gameControlController.setGameMode);
+router.post('/motors/enable', gameControlController.enableMotors);
+router.post('/motors/disable', gameControlController.disableMotors);
+
 // Game session routes
 router.post('/session/create', gameControlController.createGameSession);
 router.post('/session/hit', gameControlController.registerHit);
@@ -19,5 +24,40 @@ router.get('/leaderboard', gameControlController.getLeaderboard);
 // Test endpoint for WebSocket communication
 router.get('/test', gameControlController.testConnection);
 router.get('/status', gameControlController.getStatus);
+
+// Manual test routes for debugging
+router.post('/test/mode/:gameMode', (req, res) => {
+  const { gameMode } = req.params;
+  console.log(`🧪 Manual test: Setting game mode to ${gameMode}`);
+  
+  // Call the actual setGameMode function
+  const mockReq = {
+    body: {
+      gameMode: gameMode,
+      motorSettings: null
+    }
+  };
+  
+  gameControlController.setGameMode(mockReq, res);
+});
+
+router.post('/test/motors/:action', (req, res) => {
+  const { action } = req.params;
+  console.log(`🧪 Manual test: Motor action ${action}`);
+  
+  const mockReq = {
+    body: {
+      gameMode: 'easy'
+    }
+  };
+  
+  if (action === 'enable') {
+    gameControlController.enableMotors(mockReq, res);
+  } else if (action === 'disable') {
+    gameControlController.disableMotors(mockReq, res);
+  } else {
+    res.status(400).json({ success: false, message: 'Invalid action. Use enable or disable' });
+  }
+});
 
 module.exports = router;

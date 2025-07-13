@@ -114,3 +114,35 @@ export async function fetchUserScores(userId) {
     return { ok: false, error: err.message || 'Network error' };
   }
 }
+
+// Motor control API functions
+export const setGameMode = async (gameMode, motorSettings = null) => {
+  return apiRequest("/game/control/mode/set", "POST", { gameMode, motorSettings });
+};
+
+export const enableMotors = async () => {
+  return apiRequest('/game/control/motors/enable', 'POST');
+};
+
+export const disableMotors = async () => {
+  return apiRequest('/game/control/motors/disable', 'POST');
+};
+
+// Game Session Management
+export const createGameSession = async (playerName, gameMode, gameSettings) => {
+  return apiRequest('/game/control/session', 'POST', {
+    playerName,
+    gameMode,
+    gameSettings
+  });
+};
+
+export const endGameSession = async (sessionId) => {
+  return apiRequest('/game/control/session/end', 'POST', {
+    sessionId
+  });
+};
+
+export const getSessionStats = async (sessionId) => {
+  return apiRequest(`/game/control/session/${sessionId}/stats`);
+};
