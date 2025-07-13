@@ -451,7 +451,7 @@ const setGameMode = async (req, res) => {
     
     const gameModeCommand = {
       type: 'set_game_mode',
-      gameMode: gameMode || 'easy',
+      gameMode: gameMode || 'medium',
       motorSettings: motorSettings || selectedSettings,
       motorEnabled: false, // Motors configured but not started
       timestamp: Date.now()
@@ -496,25 +496,40 @@ const setGameMode = async (req, res) => {
 // Enable motors - Start motor movement
 const enableMotors = async (req, res) => {
   try {
+    console.log('enableMotors req.body:', req.body);
     const { gameMode } = req.body;
-    
+    let enabledAxes = ['x'];
+    let movement = 'linear';
+    let selectedGameMode = gameMode || 'medium';
+    if (selectedGameMode === 'medium') {
+      enabledAxes = ['x', 'y'];
+      movement = 'wave';
+    } else if (selectedGameMode === 'hard') {
+      enabledAxes = ['x', 'y'];
+      movement = 'random';
+    }
+
     const motorEnableCommand = {
       type: 'enable_motors',
-      gameMode: gameMode || 'easy',
+      gameMode: selectedGameMode,
       motorEnabled: true,
+      enabledAxes,
+      movement,
       timestamp: Date.now()
     };
-    
+
     // Send command to NodeMCU
     const sent = broadcastToNodeMCU(motorEnableCommand);
-    
+
     // Also broadcast to web clients
     broadcastToWeb({
       type: 'motors_enabled',
-      gameMode: gameMode,
+      gameMode: selectedGameMode,
+      enabledAxes,
+      movement,
       timestamp: Date.now()
     });
-    
+
     if (sent) {
       res.json({
         success: true,

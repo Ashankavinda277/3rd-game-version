@@ -120,8 +120,8 @@ export const setGameMode = async (gameMode, motorSettings = null) => {
   return apiRequest("/game/control/mode/set", "POST", { gameMode, motorSettings });
 };
 
-export const enableMotors = async () => {
-  return apiRequest('/game/control/motors/enable', 'POST');
+export const enableMotors = async (gameMode) => {
+  return apiRequest('/game/control/motors/enable', 'POST', { gameMode });
 };
 
 export const disableMotors = async () => {

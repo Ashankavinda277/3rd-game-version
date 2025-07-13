@@ -281,12 +281,11 @@ const PlayPage = () => {
 
   const startGame = useCallback(async () => {
     if (!isMounted.current) return;
-    
     try {
       // Enable motors when game starts
       console.log('Enabling motors for game mode:', gameMode);
-      const motorResponse = await enableMotors(gameMode || 'easy');
-      
+      const modeToSend = gameMode || 'easy';
+      const motorResponse = await enableMotors(modeToSend);
       if (motorResponse.ok) {
         console.log('Motors enabled successfully:', motorResponse.data);
       } else {
@@ -295,7 +294,6 @@ const PlayPage = () => {
     } catch (error) {
       console.error('Error enabling motors:', error);
     }
-    
     setGameState('playing');
     setScore(0);
     setTimeLeft(settings.gameDuration);
