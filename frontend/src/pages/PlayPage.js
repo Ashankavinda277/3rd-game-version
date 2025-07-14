@@ -5,6 +5,7 @@ import { useGameContext } from '../contexts/GameContext';
 import Target from '../components/common/Target';
 import { submitScore } from '../services/api';
 import Loader from '../components/common/Loader';
+const countdownAudioRef = useRef(null);
 
 // Constants
 const GAME_CONSTANTS = {
@@ -239,16 +240,25 @@ const PlayPage = () => {
     generateTargets();
     setupWebSocket();
 
-    timerIntervalRef.current = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timerIntervalRef.current);
-          endGame();
-          return 0;
-        }
-        return prev - 1;
+  timerIntervalRef.current = setInterval(() => {
+  setTimeLeft(prev => {
+    if (prev <= 1) {
+      clearInterval(timerIntervalRef.current);
+      endGame();
+      return 0;
+    }
+
+    // ▶️ Play countdown at 6 seconds to align with 5s display
+    if (prev === 6 && countdownAudioRef.current) {
+      countdownAudioRef.current.play().catch(err => {
+        console.warn("Countdown audio failed to play:", err);
       });
-    }, GAME_CONSTANTS.TIMER_INTERVAL);
+    }
+
+    return prev - 1;
+  });
+}, GAME_CONSTANTS.TIMER_INTERVAL);
+
 
     targetMoveIntervalRef.current = setInterval(() => {
       if (isMounted.current) generateTargets();
@@ -512,5 +522,7 @@ const PlayPage = () => {
     </>
   );
 }
+<audio ref={countdownAudioRef} preload="auto" src="/sounds/countdown.mp3" />
+
 
 export default PlayPage;
