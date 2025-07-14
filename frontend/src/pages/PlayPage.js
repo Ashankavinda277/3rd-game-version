@@ -5,7 +5,7 @@ import { useGameContext } from '../contexts/GameContext';
 import Target from '../components/common/Target';
 import { submitScore } from '../services/api';
 import Loader from '../components/common/Loader';
-const countdownAudioRef = useRef(null);
+
 
 // Constants
 const GAME_CONSTANTS = {
@@ -522,7 +522,7 @@ const PlayPage = () => {
     </>
   );
 }
-<audio ref={countdownAudioRef} preload="auto" src="/sounds/countdown.mp3" />
+
 
 
 export default PlayPage;

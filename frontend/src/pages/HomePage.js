@@ -112,15 +112,7 @@ const HomePage = () => {
 
       {/* Main Content */}
       <main className="main-content">
-        {/* Title Section */}
-        <section className="title-section">
-          <h1 className="game-title">
-            <span className="title-primary">IGI</span>
-            <span className="title-secondary">TACTICAL</span>
-          </h1>
-          <div className="title-underline"></div>
-          <p className="game-tagline">Elite Operations • Precision Combat</p>
-        </section>
+      
 
         {/* Interactive Elements */}
         <section className="interactive-section">
@@ -136,7 +128,9 @@ const HomePage = () => {
             <div className="target-scanner"></div>
           </div>
 
-          {/* Mission Entry */}
+         
+        </section>
+         {/* Mission Entry */}
           <div className="mission-entry">
             <div className="mission-brief">
               <h2 className="mission-title">MISSION BRIEFING</h2>
@@ -157,7 +151,6 @@ const HomePage = () => {
               </Button>
             </div>
           </div>
-        </section>
 
         {/* Status Bar */}
         <div className="status-bar">
