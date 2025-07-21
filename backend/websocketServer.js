@@ -87,7 +87,7 @@ const setupWebSocketServer = (server) => {
         console.log("Raw message received:", messageStr);
 
         // Handle non-JSON messages (including from NodeMCU/Arduino)
-        if (messageStr === "jj" || messageStr === "HIT" || messageStr.startsWith("From Server:")) {
+        if (messageStr === "HIT1" || messageStr === "HIT2"|| messageStr === "HIT3" || messageStr.startsWith("From Server:")) {
           console.log("Received simple message:", messageStr);
           
           // Auto-identify as NodeMCU if not already identified
@@ -105,15 +105,21 @@ const setupWebSocketServer = (server) => {
           }
 
           // Handle HIT messages
-          if (messageStr === "jj" || messageStr === "HIT") {
+          if (messageStr === "HIT1" || messageStr === "HIT2"|| messageStr === "HIT3" ) {
             console.log("🎯 Processing hardware hit:", messageStr);
             
+            // Set score increment based on hit type
+            let scoreIncrement = 0;
+            if (messageStr === "HIT1") scoreIncrement = 10;
+            else if (messageStr === "HIT2") scoreIncrement = 5;
+            else if (messageStr === "HIT3") scoreIncrement = 2;
+
             // Create a proper hit message for web clients with score increment
             const hitData = {
               type: "target_hit",
               targetId: 0,
               timestamp: Date.now(),
-              scoreIncrement: 10, // Points per hit
+              scoreIncrement,
               rawMessage: messageStr,
               hitType: "direct_hit",
             };

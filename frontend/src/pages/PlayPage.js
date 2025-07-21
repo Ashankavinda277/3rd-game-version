@@ -186,8 +186,21 @@ const PlayPage = () => {
           // Priority 3: Handle direct hit messages from hardware (legacy/fallback)
           if (data.type === 'target_hit' || data.type === 'hit') {
             console.log('🎯 Processing direct hardware hit:', data);
-            
-            if (data.scoreIncrement && typeof data.scoreIncrement === 'number') {
+            let points = 0;
+            if (data.value === 'HIT1') {
+              points = 10;
+            } else if (data.value === 'HIT2') {
+              points = 5;
+            } else if (data.value === 'HIT3') {
+              points = 2;
+            }
+            if (points > 0) {
+              setScore(prev => {
+                const newScore = prev + points;
+                console.log(`HIT! ${points} score ${data.value}`);
+                return newScore;
+              });
+            } else if (data.scoreIncrement && typeof data.scoreIncrement === 'number') {
               setScore(prev => {
                 const newScore = prev + data.scoreIncrement;
                 console.log('Score incremented by hardware hit:', newScore);
@@ -200,7 +213,6 @@ const PlayPage = () => {
                 return newScore;
               });
             }
-            
             // Add visual hit indicator
             const rect = gameAreaRef.current?.getBoundingClientRect();
             if (rect) {
