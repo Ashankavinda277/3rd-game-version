@@ -30,32 +30,38 @@ const PlayerProgressPage = () => {
   
   useEffect(() => {
     const loadUserScores = async () => {
-      if (!user?._id) {
-        setError('User not authenticated');
-        setIsLoading(false);
-        return;
-      }
+      let finished = false;
       try {
+        if (!user?._id) {
+          setError('User not authenticated');
+          setIsLoading(false);
+          finished = true;
+          return;
+        }
         const response = await fetchUserScores(user._id);
         if (response.ok) {
-          const scores = response.data?.scores || response.data?.data?.scores || [];          // Group by mode
-          const games = scores.map(s => ({
-            id: s._id,
-            score: Number(s.score) || 0,
-            mode: s.gameMode || 'Unknown',
-            accuracy: Number(s.accuracy) || 0,
-            duration: Number(s.timePlayed) || 0,
-            date: s.createdAt
-          }));
-          const totalGames = games.length;
-          const highestScore = games.length > 0 ? games.reduce((max, g) => Math.max(max, g.score), 0) : 0;
-          const averageScore = totalGames > 0 ? Math.round((games.reduce((sum, g) => sum + g.score, 0) / totalGames) * 100) / 100 : 0;
+          const scores = response.data?.scores || response.data?.data?.scores || [];
+          // Map and sort all games by date descending
+          const allGames = scores
+            .map(s => ({
+              id: s._id,
+              score: Number(s.score) || 0,
+              mode: s.gameMode || 'Unknown',
+              accuracy: Number(s.accuracy) || 0,
+              duration: Number(s.timePlayed) || 0,
+              date: s.createdAt
+            }))
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+          const newestGames = allGames.slice(0, 10);
+          const totalGames = allGames.length; // All games, not just newest 10
+          const highestScore = allGames.length > 0 ? allGames.reduce((max, g) => Math.max(max, g.score), 0) : 0;
+          const averageScore = totalGames > 0 ? Math.round((allGames.reduce((sum, g) => sum + g.score, 0) / totalGames) * 100) / 100 : 0;
           // Find preferred mode (most played)
-          const modeCounts = games.reduce((acc, g) => { acc[g.mode] = (acc[g.mode] || 0) + 1; return acc; }, {});
+          const modeCounts = allGames.reduce((acc, g) => { acc[g.mode] = (acc[g.mode] || 0) + 1; return acc; }, {});
           const preferredMode = Object.keys(modeCounts).length > 0 
             ? Object.keys(modeCounts).reduce((a, b) => modeCounts[a] > modeCounts[b] ? a : b, '')
             : 'No games played';
-          setProgressData({ games, totalGames, averageScore, highestScore, preferredMode });
+          setProgressData({ games: newestGames, totalGames, averageScore, highestScore, preferredMode });
         } else {
           setError(response.error || 'Failed to load progress data');
         }
@@ -64,7 +70,7 @@ const PlayerProgressPage = () => {
         setError('Error connecting to server');
       } finally {
         setIsLoading(false);
-        if (needsRefresh && setNeedsRefresh) setNeedsRefresh(false);
+        if (setNeedsRefresh) setNeedsRefresh(false);
       }
     };
     loadUserScores();
@@ -104,7 +110,7 @@ const PlayerProgressPage = () => {
           <>
             <div className="player-progress-chart-container">
               {/* Simple bar chart implementation */}
-              {progressData.games.slice(-10).map((game, index) => (
+              {progressData.games.map((game, index) => (
                 <div key={game.id || index} className="player-progress-chart-bar">
                   <div 
                     className="player-progress-bar"

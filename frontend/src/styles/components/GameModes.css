@@ -38,11 +38,39 @@
   background: linear-gradient(to right, #27ae60, #219a52);
   color: white;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: transform 0.2s, opacity 0.2s;
 }
 
 .mode-button:hover {
   transform: scale(1.05);
+}
+
+.mode-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.mode-button.loading {
+  opacity: 0.8;
+  cursor: wait;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.8; }
+  50% { opacity: 0.5; }
+  100% { opacity: 0.8; }
+}
+
+.loading-message {
+  margin-top: 20px;
+  padding: 10px;
+  background: rgba(52, 152, 219, 0.2);
+  border: 1px solid #3498db;
+  border-radius: 5px;
+  color: #3498db;
+  font-size: 14px;
 }
 
 .back-button {

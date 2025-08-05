@@ -40,25 +40,42 @@ class GameSessionService {
     }
   }
   
+  // Get the most recent active session (for hardware hits)
+  static async getMostRecentActiveSession() {
+    try {
+      return await GameSession.findOne({ isActive: true })
+        .sort({ startTime: -1 })
+        .limit(1);
+    } catch (error) {
+      console.error('Error getting most recent active session:', error);
+      throw error;
+    }
+  }
+  
   // Register a hit in the session
   static async registerHit(sessionId, hitData) {
     try {
       const session = await GameSession.findOne({ sessionId, isActive: true });
-      
       if (!session) {
         throw new Error('Active session not found');
       }
-      
-      await session.addHit(hitData);
-      
-      console.log(`Hit registered for session ${sessionId}: ${hitData.points} points`);
-      
+
+      // Use scoreIncrement if provided, fallback to points
+      const points = typeof hitData.scoreIncrement === 'number' ? hitData.scoreIncrement : hitData.points;
+      const hitDetails = {
+        ...hitData,
+        points
+      };
+      await session.addHit(hitDetails);
+
+      console.log(`Hit registered for session ${sessionId}: ${points} points`);
+
       return {
         sessionId,
         currentScore: session.currentScore,
         hitCount: session.hitCount,
         accuracy: session.accuracy,
-        hit: hitData
+        hit: hitDetails
       };
     } catch (error) {
       console.error('Error registering hit:', error);

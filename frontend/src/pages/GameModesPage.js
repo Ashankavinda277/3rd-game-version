@@ -5,13 +5,20 @@ import "../styles/pages/GameModesPage.css";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/common/Button";
 import { useGameContext } from "../contexts/GameContext";
+import { setGameMode as setGameModeAPI } from '../services/api';
 
 const GameModesPage = () => {
   const navigate = useNavigate();
   const { setGameMode } = useGameContext();
 
-  const handleModeSelect = (mode) => {
+  const handleModeSelect = async (mode) => {
     setGameMode(mode);
+    try {
+      await setGameModeAPI(mode);
+    } catch (err) {
+      // Optionally handle error (e.g., show a message)
+      console.error('Failed to send game mode to backend:', err);
+    }
     navigate("/play");
   };
 

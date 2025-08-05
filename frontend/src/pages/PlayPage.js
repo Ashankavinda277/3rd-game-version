@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import '../styles/pages/PlayPage.css';
 import { useGameContext } from '../contexts/GameContext';
 import Target from '../components/common/Target';
-import { submitScore } from '../services/api';
+import { submitScore, enableMotors, disableMotors, createGameSession, endGameSession } from '../services/api';
 import Loader from '../components/common/Loader';
 
 
@@ -68,6 +68,7 @@ const GameInfoPanel = ({ score, gameMode, timeLeft }) => {
 const PlayPage = () => {
   const { user, gameMode, gameSettings, setNeedsRefresh, loading } = useGameContext();
   const [gameState, setGameState] = useState('ready');
+  const [countdown, setCountdown] = useState(null); // null or number or 'GO!'
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
   const [targets, setTargets] = useState([]);
@@ -81,6 +82,9 @@ const PlayPage = () => {
     totalClicks: 0,
     totalHits: 0,
   });
+  const [currentSessionId, setCurrentSessionId] = useState(null); // Track current game session
+  const [showFinal, setShowFinal] = useState(true);
+  const [finalPageStart, setFinalPageStart] = useState(false);
 
   const gameAreaRef = useRef(null);
   const timerIntervalRef = useRef(null);
@@ -91,17 +95,6 @@ const PlayPage = () => {
   const wsRef = useRef(null);
 
   const navigate = useNavigate();
-
-  // Only redirect if user is explicitly null/false, not undefined (undefined = still loading)
-  React.useEffect(() => {
-    if (!loading && (user === null || user === false)) {
-      alert('You must be logged in to play!');
-      navigate('/register');
-    }
-  }, [user, loading, navigate]);
-
-  // If context is still loading, show loader
-  if (loading) return <Loader />;
 
   const gameAreaDimensions = useMemo(() => {
     if (!gameAreaRef.current) return { width: 0, height: 0 };
@@ -121,34 +114,108 @@ const PlayPage = () => {
       clearInterval(timerIntervalRef.current);
       clearInterval(targetMoveIntervalRef.current);
       closeWebSocket();
+      
+      // Disable motors when component unmounts
+      disableMotors().catch(error => {
+        console.error('Error disabling motors on unmount:', error);
+      });
     };
   }, []);
 
+  useEffect(() => {
+    if (!loading && (user === null || user === false)) {
+      alert('You must be logged in to play!');
+      navigate('/register');
+    }
+  }, [user, loading, navigate]);
+
   const setupWebSocket = () => {
     try {
-      const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:5000';
+      // Handle missing process environment variable
+      const wsUrl = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_WS_URL) 
+        ? process.env.REACT_APP_WS_URL 
+        : 'ws://localhost:5000';
       wsRef.current = new WebSocket(wsUrl);
 
       wsRef.current.onopen = () => {
         const handshakeMessage = {
           type: "identify",
           clientType: "web",
-          sessionId: user?.id || "guest_" + Date.now(),
+          sessionId: currentSessionId,
           playerName: user?.username || "Guest"
         };
+        // Store sessionId in the WebSocket for backend reference
+        wsRef.current.sessionId = currentSessionId;
         wsRef.current.send(JSON.stringify(handshakeMessage));
+        console.log('WebSocket connected and session registered:', currentSessionId);
       };
 
       wsRef.current.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          console.log('WebSocket message received:', data);
 
-          if (data.type === 'count' && data.count !== undefined) {
-            setScore(data.count);
+          // Priority 1: Handle session-aware hardware hit detection
+          if (data.type === 'hit_registered' && data.sessionId === currentSessionId) {
+            setScore(data.currentScore);
+            console.log('✅ Session hit registered - Score updated to:', data.currentScore);
+            
+            // Add visual hit indicator for session hits
+            const rect = gameAreaRef.current?.getBoundingClientRect();
+            if (rect) {
+              const centerX = rect.width / 2;
+              const centerY = rect.height / 2;
+              setHitPositions(prev => [...prev, { x: centerX, y: centerY, id: Date.now() }]);
+            }
+            return; // Exit early for session hits
           }
 
-          if (data.type === 'hit' && data.value === 'HIT') {
-            setScore(prev => prev + 1);
+          // Priority 2: Handle session-aware hits without matching sessionId (fallback)
+          if (data.type === 'hit_registered' && data.currentScore && !currentSessionId) {
+            setScore(data.currentScore);
+            console.log('📊 Session hit received (no local session) - Score updated to:', data.currentScore);
+            
+            // Add visual hit indicator
+            const rect = gameAreaRef.current?.getBoundingClientRect();
+            if (rect) {
+              const centerX = rect.width / 2;
+              const centerY = rect.height / 2;
+              setHitPositions(prev => [...prev, { x: centerX, y: centerY, id: Date.now() }]);
+            }
+            return;
+          }
+
+          // Priority 3: Handle direct hit messages from hardware (legacy/fallback)
+          if (data.type === 'target_hit' || data.type === 'hit') {
+            console.log('🎯 Processing direct hardware hit:', data);
+            let points = 0;
+            if (data.value === 'HIT1') {
+              points = 10;
+            } else if (data.value === 'HIT2') {
+              points = 5;
+            } else if (data.value === 'HIT3') {
+              points = 2;
+            }
+            if (points > 0) {
+              setScore(prev => {
+                const newScore = prev + points;
+                console.log(`HIT! ${points} score ${data.value}`);
+                return newScore;
+              });
+            } else if (data.scoreIncrement && typeof data.scoreIncrement === 'number') {
+              setScore(prev => {
+                const newScore = prev + data.scoreIncrement;
+                console.log('Score incremented by hardware hit:', newScore);
+                return newScore;
+              });
+            } else if (data.value === 'HIT') {
+              setScore(prev => {
+                const newScore = prev + 1;
+                console.log('Hardware hit detected, score:', newScore);
+                return newScore;
+              });
+            }
+            // Add visual hit indicator
             const rect = gameAreaRef.current?.getBoundingClientRect();
             if (rect) {
               const centerX = rect.width / 2;
@@ -158,14 +225,12 @@ const PlayPage = () => {
             }
           }
 
-          if (data.type === 'target_hit' && typeof data.scoreIncrement === 'number') {
-            setScore(prev => prev + data.scoreIncrement);
+          // Handle count updates
+          if (data.type === 'count' && data.count !== undefined) {
+            setScore(data.count);
           }
 
-          if (data.type === 'hit_registered' && data.hitData && typeof data.hitData.scoreIncrement === 'number') {
-            setScore(prev => prev + data.hitData.scoreIncrement);
-          }
-
+          // Handle position-based hits for visual feedback
           if (data.type === 'hit' && data.position) {
             setHitPositions(prev => [...prev, {
               x: data.position.x,
@@ -228,8 +293,42 @@ const PlayPage = () => {
     if (isMounted.current) setTargets(newTargets);
   }, [settings]);
 
-  const startGame = useCallback(() => {
+
+  // Countdown then start game
+  const startGameWithCountdown = useCallback(() => {
+    let count = 5;
+    setCountdown(count);
+    const countdownInterval = setInterval(() => {
+      if (count > 1) {
+        count--;
+        setCountdown(count);
+      } else {
+        clearInterval(countdownInterval);
+        setCountdown('GO!');
+        setTimeout(() => {
+          setCountdown(null);
+          actuallyStartGame();
+        }, 1000);
+      }
+    }, 1000);
+  }, []);
+
+  // The real game start logic (after countdown)
+  const actuallyStartGame = useCallback(async () => {
     if (!isMounted.current) return;
+    try {
+      // Enable motors when game starts
+      console.log('Enabling motors for game mode:', gameMode);
+      const modeToSend = gameMode || 'easy';
+      const motorResponse = await enableMotors(modeToSend);
+      if (motorResponse.ok) {
+        console.log('Motors enabled successfully:', motorResponse.data);
+      } else {
+        console.warn('Failed to enable motors:', motorResponse.error);
+      }
+    } catch (error) {
+      console.error('Error enabling motors:', error);
+    }
     setGameState('playing');
     setScore(0);
     setTimeLeft(settings.gameDuration);
@@ -263,30 +362,7 @@ const PlayPage = () => {
     targetMoveIntervalRef.current = setInterval(() => {
       if (isMounted.current) generateTargets();
     }, settings.targetSpeed);
-  }, [settings, generateTargets]);
-
-  const pauseGame = useCallback(() => {
-    if (gameState === 'playing') {
-      clearInterval(timerIntervalRef.current);
-      clearInterval(targetMoveIntervalRef.current);
-      setGameState('paused');
-    } else if (gameState === 'paused') {
-      setGameState('playing');
-      timerIntervalRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(timerIntervalRef.current);
-            endGame();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, GAME_CONSTANTS.TIMER_INTERVAL);
-      targetMoveIntervalRef.current = setInterval(() => {
-        if (isMounted.current) generateTargets();
-      }, settings.targetSpeed);
-    }
-  }, [gameState, settings.targetSpeed, generateTargets]);
+  }, [settings, generateTargets, gameMode]);
 
   const calculateGameStats = useCallback((finalScore, totalClicksCount, gameDuration) => {
     const accuracy = totalClicksCount > 0 ? (finalScore / totalClicksCount) * 100 : 0;
@@ -318,8 +394,36 @@ const PlayPage = () => {
     }
   }, [user, gameMode, settings.gameDuration]);
 
-  const endGame = useCallback(() => {
+  const endGame = useCallback(async () => {
     if (!isMounted.current) return;
+    
+    try {
+      // End the game session if one exists
+      if (currentSessionId) {
+        console.log('Ending game session:', currentSessionId);
+        const endSessionResponse = await endGameSession(currentSessionId);
+        
+        if (endSessionResponse.ok) {
+          console.log('Game session ended successfully:', endSessionResponse.data);
+        } else {
+          console.warn('Failed to end game session:', endSessionResponse.error);
+        }
+        setCurrentSessionId(null);
+      }
+      
+      // Disable motors when game ends
+      console.log('Disabling motors...');
+      const motorResponse = await disableMotors();
+      
+      if (motorResponse.ok) {
+        console.log('Motors disabled successfully:', motorResponse.data);
+      } else {
+        console.warn('Failed to disable motors:', motorResponse.error);
+      }
+    } catch (error) {
+      console.error('Error in game cleanup:', error);
+    }
+    
     clearInterval(timerIntervalRef.current);
     clearInterval(targetMoveIntervalRef.current);
     closeWebSocket();
@@ -337,7 +441,58 @@ const PlayPage = () => {
       if (setNeedsRefresh) setNeedsRefresh(true);
       localStorage.setItem('leaderboardRefresh', Date.now().toString());
     });
-  }, [score, settings.gameDuration, timeLeft, calculateGameStats, user, setNeedsRefresh, submitGameScore]);
+  }, [score, settings.gameDuration, timeLeft, calculateGameStats, user, setNeedsRefresh, submitGameScore, currentSessionId]);
+
+  const pauseGame = useCallback(async () => {
+    if (gameState === 'playing') {
+      // Disable motors when pausing
+      try {
+        console.log('Pausing game - disabling motors...');
+        const motorResponse = await disableMotors();
+        
+        if (motorResponse.ok) {
+          console.log('Motors disabled for pause:', motorResponse.data);
+        } else {
+          console.warn('Failed to disable motors on pause:', motorResponse.error);
+        }
+      } catch (error) {
+        console.error('Error disabling motors on pause:', error);
+      }
+      
+      clearInterval(timerIntervalRef.current);
+      clearInterval(targetMoveIntervalRef.current);
+      setGameState('paused');
+    } else if (gameState === 'paused') {
+      // Re-enable motors when resuming
+      try {
+        console.log('Resuming game - enabling motors...');
+        const motorResponse = await enableMotors(gameMode || 'easy');
+        
+        if (motorResponse.ok) {
+          console.log('Motors enabled for resume:', motorResponse.data);
+        } else {
+          console.warn('Failed to enable motors on resume:', motorResponse.error);
+        }
+      } catch (error) {
+        console.error('Error enabling motors on resume:', error);
+      }
+      
+      setGameState('playing');
+      timerIntervalRef.current = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(timerIntervalRef.current);
+            endGame();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, GAME_CONSTANTS.TIMER_INTERVAL);
+      targetMoveIntervalRef.current = setInterval(() => {
+        if (isMounted.current) generateTargets();
+      }, settings.targetSpeed);
+    }
+  }, [gameState, settings.targetSpeed, generateTargets, gameMode, endGame]);
 
   const handleGameAreaClick = useCallback((e) => {
     if (gameState !== 'playing' || !gameAreaRef.current) return;
@@ -376,9 +531,6 @@ const PlayPage = () => {
     }
   }, [gameState, targets, generateTargets]);
 
-  // Show FinalPage after game mode selection, and navigate to PlayPage on Start
-  const [showFinal, setShowFinal] = useState(true);
-  const [finalPageStart, setFinalPageStart] = useState(false);
   const FinalPage = React.useMemo(() => React.lazy(() => import('./FinalPage')), []);
 
   // Main render block
@@ -391,13 +543,19 @@ const PlayPage = () => {
               setShowFinal(false);
               setFinalPageStart(true);
               setTimeout(() => {
-                startGame();
+                startGameWithCountdown();
               }, 0);
             }}
             score={score}
             timeLeft={timeLeft}
           />
         </React.Suspense>
+      ) : countdown !== null ? (
+        <div className="countdown-overlay">
+          <div className="countdown-content">
+            <h1 className="countdown-number">{countdown}</h1>
+          </div>
+        </div>
       ) : gameState === 'playing' ? (
         <div className="game-container">
           <div className="game-header">

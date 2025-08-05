@@ -40,84 +40,172 @@ const setupWebSocketServer = (server) => {
 
   wss.on("connection", (ws, req) => {
     console.log("New WebSocket connection from:", req.socket.remoteAddress);
+    console.log("Connection headers:", req.headers);
 
     // Initially mark as unidentified
     ws.clientType = "unidentified";
 
+    // Auto-identify NodeMCU based on User-Agent or other headers
+    const userAgent = req.headers['user-agent'] || '';
+    if (userAgent.includes('ESP') || userAgent.includes('Arduino') || req.headers['sec-websocket-protocol']) {
+      console.log("Auto-identifying as NodeMCU based on headers");
+      ws.clientType = "nodeMCU";
+      clients.nodeMCU.add(ws);
+      
+      // Send immediate confirmation
+      ws.send(JSON.stringify({
+        type: "identification_confirmed",
+        clientType: "nodeMCU",
+        timestamp: Date.now(),
+        message: "Auto-identified as NodeMCU"
+      }));
+      
+      // Notify web clients
+      broadcastStatus({
+        type: "nodeMCU_connected",
+        timestamp: Date.now(),
+        message: "NodeMCU device has connected (auto-identified)",
+        ...getConnectionStats(),
+      });
+    }
+
+    // Send a welcome message immediately
+    ws.send(JSON.stringify({
+      type: "connection",
+      status: "connected",
+      message: "WebSocket connection established",
+      timestamp: Date.now(),
+      serverId: "SmartShootingGallery",
+      connectionStats: getConnectionStats()
+    }));
+
     // Handle messages from clients
-    ws.on("message", (message) => {
+    ws.on("message", async (message) => {
       try {
         // First check if the message is valid JSON
         const messageStr = message.toString().trim();
         console.log("Raw message received:", messageStr);
 
-        // Handle non-JSON messages
-        if (messageStr === "jj" || messageStr === "HIT") {
-          console.log("Received simple hit message:", messageStr);
+        // Handle non-JSON messages (including from NodeMCU/Arduino)
+        if (messageStr === "HIT1" || messageStr === "HIT2"|| messageStr === "HIT3" || messageStr.startsWith("From Server:")) {
+          console.log("Received simple message:", messageStr);
+          
+          // Auto-identify as NodeMCU if not already identified
+          if (ws.clientType === "unidentified") {
+            console.log("Auto-identifying sender as NodeMCU");
+            ws.clientType = "nodeMCU";
+            clients.nodeMCU.add(ws);
+            
+            broadcastStatus({
+              type: "nodeMCU_connected",
+              timestamp: Date.now(),
+              message: "NodeMCU device identified from message pattern",
+              ...getConnectionStats(),
+            });
+          }
 
-          // Create a proper hit message for web clients with score increment
-          const hitData = {
-            type: "target_hit",
-            targetId: 0,
-            timestamp: Date.now(),
-            scoreIncrement: 10, // Points per hit
-            rawMessage: messageStr,
-            hitType: "direct_hit",
-          };
+          // Handle HIT messages
+          if (messageStr === "HIT1" || messageStr === "HIT2"|| messageStr === "HIT3" ) {
+            console.log("🎯 Processing hardware hit:", messageStr);
+            
+            // Set score increment based on hit type
+            let scoreIncrement = 0;
+            if (messageStr === "HIT1") scoreIncrement = 10;
+            else if (messageStr === "HIT2") scoreIncrement = 5;
+            else if (messageStr === "HIT3") scoreIncrement = 2;
 
-          // Try to register hit in active sessions
-          const activeWebClients = Array.from(clients.web).filter(
-            (client) => client.sessionId && client.readyState === WebSocket.OPEN
-          );
+            // Create a proper hit message for web clients with score increment
+            const hitData = {
+              type: "target_hit",
+              targetId: 0,
+              timestamp: Date.now(),
+              scoreIncrement,
+              rawMessage: messageStr,
+              hitType: "direct_hit",
+            };
 
-          activeWebClients.forEach(async (client) => {
+            // Find the most recent active session for hardware hits
             try {
-              // Register hit in the session
-              const result = await GameSessionService.registerHit(
-                client.sessionId,
-                {
-                  points: hitData.scoreIncrement,
-                  targetId: hitData.targetId,
-                  accuracy: 100,
-                  zone: "center",
-                }
-              );
+              const activeSession = await GameSessionService.getMostRecentActiveSession();
+              
+              if (activeSession) {
+                console.log("📊 Found active session for hit:", activeSession.sessionId);
+                
+                // Register hit in the active session
+                const result = await GameSessionService.registerHit(
+                  activeSession.sessionId,
+                  {
+                    points: hitData.scoreIncrement,
+                    targetId: hitData.targetId,
+                    accuracy: 100,
+                    zone: "center",
+                  }
+                );
 
-              // Send updated score to the specific client
-              client.send(
-                JSON.stringify({
+                // Create session-aware hit message
+                const sessionHitData = {
                   ...hitData,
-                  sessionId: client.sessionId,
+                  sessionId: activeSession.sessionId,
                   currentScore: result.currentScore,
                   hitCount: result.hitCount,
                   accuracy: result.accuracy,
                   type: "hit_registered",
-                })
-              );
+                };
+
+                // Send to all web clients
+                clients.web.forEach((client) => {
+                  if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify(sessionHitData));
+                  }
+                });
+                
+                console.log("✅ Hit registered successfully - Score:", result.currentScore);
+              } else {
+                console.log("⚠️ No active session found - sending generic hit data");
+                
+                // No active session, send generic hit data to all web clients
+                clients.web.forEach((client) => {
+                  if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify(hitData));
+                  }
+                });
+              }
             } catch (error) {
-              console.error("Error registering hit in session:", error);
-              // Still send the hit data even if session update fails
-              client.send(JSON.stringify(hitData));
+              console.error("❌ Error processing hit in session:", error);
+              
+              // Fallback: send generic hit data
+              clients.web.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(JSON.stringify(hitData));
+                }
+              });
             }
-          });
 
-          // Forward to all web clients (for non-session clients)
-          clients.web.forEach((client) => {
-            if (client.readyState === WebSocket.OPEN && !client.sessionId) {
-              client.send(JSON.stringify(hitData));
-            }
-          });
+            // Broadcast hit statistics to all clients
+            broadcastStatus({
+              type: "hit_registered",
+              timestamp: Date.now(),
+              message: "Hit detected and processed",
+              hitData: hitData,
+              timestamp: Date.now()
+            });
+            
+            return; // Exit early after handling the special case
+          }
+          
+          // Handle other NodeMCU status messages
+          if (messageStr.startsWith("From Server:")) {
+            console.log("NodeMCU status message:", messageStr);
+            
+            broadcastStatus({
+              type: "nodeMCU_status",
+              message: messageStr,
+              timestamp: Date.now()
+            });
+            return;
+          }
 
-          // Broadcast hit statistics to all clients
-          broadcastStatus({
-            type: "hit_registered",
-            timestamp: Date.now(),
-            message: "Hit detected and processed",
-            hitData: hitData,
-            activeSessionCount: activeWebClients.length,
-          });
-
-          return; // Exit early after handling the special case
+          return; // Exit early after handling non-JSON messages
         }
 
         // Try to parse as JSON for other messages
@@ -126,7 +214,7 @@ const setupWebSocketServer = (server) => {
         // Check if this is a device identification message
         if (data.type === "identify") {
           if (data.clientType === "nodeMCU") {
-            console.log("NodeMCU device identified and registered");
+            console.log("NodeMCU device identified and registered via JSON");
             ws.clientType = "nodeMCU";
             clients.nodeMCU.add(ws);
 
@@ -167,6 +255,28 @@ const setupWebSocketServer = (server) => {
           return;
         }
 
+        // Auto-identify based on message content if not already identified
+        if (ws.clientType === "unidentified") {
+          // Check for typical NodeMCU/Arduino message patterns
+          if (data.type && (data.type.includes("motor") || data.type.includes("sensor") || data.type.includes("hit"))) {
+            console.log("Auto-identifying as NodeMCU based on message content");
+            ws.clientType = "nodeMCU";
+            clients.nodeMCU.add(ws);
+            
+            broadcastStatus({
+              type: "nodeMCU_connected",
+              timestamp: Date.now(),
+              message: "NodeMCU auto-identified from message pattern",
+              ...getConnectionStats(),
+            });
+          } else {
+            // Assume web client
+            console.log("Auto-identifying as web client");
+            ws.clientType = "web";
+            clients.web.add(ws);
+          }
+        }
+
         // Handle session-related messages
         if (data.type === "session_info") {
           if (ws.clientType === "web") {
@@ -180,6 +290,69 @@ const setupWebSocketServer = (server) => {
         }
 
         console.log(`Received data from ${ws.clientType}:`, data);
+
+        // Handle messages from web clients
+        if (ws.clientType === "web") {
+          // Handle game mode configuration messages
+          if (data.type === "set_game_mode") {
+            console.log("🎮 Game mode configuration received from web client:", data);
+            
+            // Forward to NodeMCU devices with the exact structure expected by Arduino
+            clients.nodeMCU.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) {
+                const motorCommand = {
+                  type: "set_game_mode",
+                  gameMode: data.gameMode,
+                  motorSettings: data.motorSettings,
+                  motorEnabled: data.motorEnabled || false,
+                  timestamp: Date.now()
+                };
+                
+                console.log("📤 Sending to NodeMCU:", JSON.stringify(motorCommand));
+                client.send(JSON.stringify(motorCommand));
+              }
+            });
+            
+            // Broadcast to web clients for confirmation
+            broadcastStatus({
+              type: "game_mode_configured",
+              gameMode: data.gameMode,
+              motorSettings: data.motorSettings,
+              timestamp: Date.now(),
+              message: `Game mode '${data.gameMode}' configured on hardware`
+            });
+            return;
+          }
+
+          // Handle motor enable/disable messages
+          if (data.type === "enable_motors" || data.type === "disable_motors") {
+            console.log("🔧 Motor control command received from web client:", data);
+            
+            // Forward to NodeMCU devices with clear structure
+            clients.nodeMCU.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) {
+                const motorCommand = {
+                  type: data.type,
+                  gameMode: data.gameMode || "easy",
+                  motorEnabled: data.type === "enable_motors",
+                  timestamp: Date.now()
+                };
+                
+                console.log("📤 Sending motor command to NodeMCU:", JSON.stringify(motorCommand));
+                client.send(JSON.stringify(motorCommand));
+              }
+            });
+            
+            // Broadcast to web clients for confirmation
+            broadcastStatus({
+              type: data.type === "enable_motors" ? "motors_enabled" : "motors_disabled",
+              gameMode: data.gameMode,
+              timestamp: Date.now(),
+              message: data.type === "enable_motors" ? "Motors enabled and started" : "Motors disabled and stopped"
+            });
+            return;
+          }
+        }
 
         // Process data from NodeMCU (which got it from Mega via Serial)
         if (ws.clientType === "nodeMCU") {
@@ -341,17 +514,22 @@ const setupWebSocketServer = (server) => {
     // Mark connection as alive initially
     ws.isAlive = true;
 
-    // Send a welcome message and request identification
-    ws.send(
-      JSON.stringify({
-        type: "connection",
-        status: "connected",
-        message:
-          "Please identify yourself by sending a message with type:identify and clientType:nodeMCU or web",
-        timestamp: Date.now(),
-        serverId: "SmartShootingGallery",
-      })
-    );
+    // Send a welcome message and request identification (but don't require it)
+    setTimeout(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(
+          JSON.stringify({
+            type: "welcome",
+            status: "ready",
+            message: "WebSocket connection ready. Send any message to start communication.",
+            timestamp: Date.now(),
+            serverId: "SmartShootingGallery",
+            clientType: ws.clientType,
+            connectionStats: getConnectionStats()
+          })
+        );
+      }
+    }, 100); // Small delay to ensure connection is fully established
   });
 
   // Heartbeat mechanism to detect dead connections
