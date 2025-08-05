@@ -128,6 +128,11 @@ export const disableMotors = async () => {
   return apiRequest('/game/control/motors/disable', 'POST');
 };
 
+
+export const pauseGame = async () => {
+  return apiRequest('/game/control/pause', 'POST');
+};
+
 // Game Session Management
 export const createGameSession = async (playerName, gameMode, gameSettings) => {
   return apiRequest('/game/control/session', 'POST', {
