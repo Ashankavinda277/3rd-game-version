@@ -67,6 +67,7 @@ const GameInfoPanel = ({ score, gameMode, timeLeft }) => {
 const PlayPage = () => {
   const { user, gameMode, gameSettings, setNeedsRefresh, loading } = useGameContext();
   const [gameState, setGameState] = useState('ready');
+  const [countdown, setCountdown] = useState(null); // null or number or 'GO!'
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
   const [targets, setTargets] = useState([]);
@@ -279,7 +280,28 @@ const PlayPage = () => {
     if (isMounted.current) setTargets(newTargets);
   }, [settings]);
 
-  const startGame = useCallback(async () => {
+
+  // Countdown then start game
+  const startGameWithCountdown = useCallback(() => {
+    let count = 5;
+    setCountdown(count);
+    const countdownInterval = setInterval(() => {
+      if (count > 1) {
+        count--;
+        setCountdown(count);
+      } else {
+        clearInterval(countdownInterval);
+        setCountdown('GO!');
+        setTimeout(() => {
+          setCountdown(null);
+          actuallyStartGame();
+        }, 1000);
+      }
+    }, 1000);
+  }, []);
+
+  // The real game start logic (after countdown)
+  const actuallyStartGame = useCallback(async () => {
     if (!isMounted.current) return;
     try {
       // Enable motors when game starts
@@ -499,13 +521,19 @@ const PlayPage = () => {
               setShowFinal(false);
               setFinalPageStart(true);
               setTimeout(() => {
-                startGame();
+                startGameWithCountdown();
               }, 0);
             }}
             score={score}
             timeLeft={timeLeft}
           />
         </React.Suspense>
+      ) : countdown !== null ? (
+        <div className="countdown-overlay">
+          <div className="countdown-content">
+            <h1 className="countdown-number">{countdown}</h1>
+          </div>
+        </div>
       ) : gameState === 'playing' ? (
         <div className="game-container">
           <div className="game-header">
