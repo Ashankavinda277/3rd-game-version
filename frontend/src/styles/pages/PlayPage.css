@@ -1140,6 +1140,7 @@ body {
   100% { transform: translateY(-100px); }
 }
 
+
 /* Countdown Overlay Styles */
 .countdown-overlay {
   position: fixed;
@@ -1214,3 +1215,4 @@ body {
     font-size: 1.5rem;
   }
 }
+
