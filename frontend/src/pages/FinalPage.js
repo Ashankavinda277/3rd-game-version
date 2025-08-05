@@ -13,6 +13,7 @@ const FinalPage = ({ onStart }) => {
         <div className="final-page-overlay">
           <div className="final-page-button-container">
             <button className="final-page-button" onClick={onStart}>Play Now</button>
+            <button className="final-page-button" onClick={() => navigate('/game-modes')}>Choose Game Mode</button>
             <button className="final-page-button" onClick={() => navigate('/leaderboard')}>Leader Board</button>
             <button className="final-page-button" onClick={() => navigate('/progress')}>Player Progress</button>
           </div>
