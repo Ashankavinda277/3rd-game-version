@@ -1139,3 +1139,78 @@ body {
   0% { transform: translateY(0px); }
   100% { transform: translateY(-100px); }
 }
+
+/* Countdown Overlay Styles */
+.countdown-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+}
+
+.countdown-content {
+  text-align: center;
+  color: white;
+  animation: countdownPulse 1s ease-in-out infinite;
+}
+
+.countdown-number {
+  font-size: 8rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+  animation: countdownScale 1s ease-in-out;
+}
+
+.countdown-text {
+  font-size: 2rem;
+  font-weight: 300;
+  opacity: 0.9;
+  animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes countdownPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes countdownScale {
+  0% { transform: scale(0.5); opacity: 0; }
+  50% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 0.9;
+    transform: translateY(0);
+  }
+}
+
+/* Make countdown number different color when it's "GO!" */
+.countdown-content .countdown-number:contains("GO!") {
+  color: #2ecc71;
+  font-size: 6rem;
+}
+
+/* Responsive countdown */
+@media (max-width: 768px) {
+  .countdown-number {
+    font-size: 6rem;
+  }
+  
+  .countdown-text {
+    font-size: 1.5rem;
+  }
+}
