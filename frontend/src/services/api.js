@@ -129,7 +129,7 @@ export const disableMotors = async () => {
 };
 
 
-export const pauseGame = async () => {
+export const pauseGameAPI = async () => {
   return apiRequest('/game/control/pause', 'POST');
 };
 

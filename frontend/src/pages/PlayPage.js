@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import '../styles/pages/PlayPage.css';
 import { useGameContext } from '../contexts/GameContext';
 import Target from '../components/common/Target';
-import { submitScore, enableMotors, disableMotors, createGameSession, endGameSession } from '../services/api';
+import { submitScore, enableMotors, disableMotors, createGameSession, endGameSession, pauseGameAPI  } from '../services/api';
 import Loader from '../components/common/Loader';
 
 
@@ -75,6 +75,7 @@ const PlayPage = () => {
   const [hitPositions, setHitPositions] = useState([]);
   const [missPositions, setMissPositions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPausing, setIsPausing] = useState(false); // Add pause loading state
   const [settings, setSettings] = useState(DIFFICULTY_SETTINGS.easy);
   const [gameStats, setGameStats] = useState({
     accuracy: 0,
@@ -89,6 +90,7 @@ const PlayPage = () => {
   const gameAreaRef = useRef(null);
   const timerIntervalRef = useRef(null);
   const targetMoveIntervalRef = useRef(null);
+  const countdownAudioRef = useRef(null); // Add missing audio ref
   const totalClicks = useRef(0);
   const isMounted = useRef(true);
   const gameStartTime = useRef(null);
@@ -293,7 +295,6 @@ const PlayPage = () => {
     if (isMounted.current) setTargets(newTargets);
   }, [settings]);
 
-
   // Countdown then start game
   const startGameWithCountdown = useCallback(() => {
     let count = 5;
@@ -339,25 +340,24 @@ const PlayPage = () => {
     generateTargets();
     setupWebSocket();
 
-  timerIntervalRef.current = setInterval(() => {
-  setTimeLeft(prev => {
-    if (prev <= 1) {
-      clearInterval(timerIntervalRef.current);
-      endGame();
-      return 0;
-    }
+    timerIntervalRef.current = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timerIntervalRef.current);
+          endGame();
+          return 0;
+        }
 
-    // ▶️ Play countdown at 6 seconds to align with 5s display
-    if (prev === 6 && countdownAudioRef.current) {
-      countdownAudioRef.current.play().catch(err => {
-        console.warn("Countdown audio failed to play:", err);
+        // ▶️ Play countdown at 6 seconds to align with 5s display
+        if (prev === 6 && countdownAudioRef.current) {
+          countdownAudioRef.current.play().catch(err => {
+            console.warn("Countdown audio failed to play:", err);
+          });
+        }
+
+        return prev - 1;
       });
-    }
-
-    return prev - 1;
-  });
-}, GAME_CONSTANTS.TIMER_INTERVAL);
-
+    }, GAME_CONSTANTS.TIMER_INTERVAL);
 
     targetMoveIntervalRef.current = setInterval(() => {
       if (isMounted.current) generateTargets();
@@ -443,56 +443,96 @@ const PlayPage = () => {
     });
   }, [score, settings.gameDuration, timeLeft, calculateGameStats, user, setNeedsRefresh, submitGameScore, currentSessionId]);
 
+  // FIXED: Pause game function with proper debouncing and error handling
   const pauseGame = useCallback(async () => {
-    if (gameState === 'playing') {
-      // Disable motors when pausing
-      try {
-        console.log('Pausing game - disabling motors...');
-        const motorResponse = await disableMotors();
-        
-        if (motorResponse.ok) {
-          console.log('Motors disabled for pause:', motorResponse.data);
-        } else {
-          console.warn('Failed to disable motors on pause:', motorResponse.error);
-        }
-      } catch (error) {
-        console.error('Error disabling motors on pause:', error);
-      }
-      
-      clearInterval(timerIntervalRef.current);
-      clearInterval(targetMoveIntervalRef.current);
-      setGameState('paused');
-    } else if (gameState === 'paused') {
-      // Re-enable motors when resuming
-      try {
-        console.log('Resuming game - enabling motors...');
-        const motorResponse = await enableMotors(gameMode || 'easy');
-        
-        if (motorResponse.ok) {
-          console.log('Motors enabled for resume:', motorResponse.data);
-        } else {
-          console.warn('Failed to enable motors on resume:', motorResponse.error);
-        }
-      } catch (error) {
-        console.error('Error enabling motors on resume:', error);
-      }
-      
-      setGameState('playing');
-      timerIntervalRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(timerIntervalRef.current);
-            endGame();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, GAME_CONSTANTS.TIMER_INTERVAL);
-      targetMoveIntervalRef.current = setInterval(() => {
-        if (isMounted.current) generateTargets();
-      }, settings.targetSpeed);
+    console.log('=== pauseGame CALLED ===');
+    console.log('Current gameState:', gameState);
+    console.log('isPausing:', isPausing);
+    console.log('Timestamp:', new Date().toISOString());
+    
+    // Prevent multiple rapid calls
+    if (isPausing) {
+      console.log('pauseGame already processing, ignoring call');
+      return;
     }
-  }, [gameState, settings.targetSpeed, generateTargets, gameMode, endGame]);
+
+    setIsPausing(true);
+
+    try {
+      if (gameState === 'playing') {
+        console.log('Pausing game...');
+        
+        // Disable motors when pausing
+        try {
+          console.log('Pausing game - disabling motors...');
+          const motorResponse = await disableMotors();
+          if (motorResponse.ok) {
+            console.log('Motors disabled for pause:', motorResponse.data);
+          } else {
+            console.warn('Failed to disable motors on pause:', motorResponse.error);
+          }
+        } catch (error) {
+          console.error('Error disabling motors on pause:', error);
+        }
+
+        try {
+          console.log('Pausing game - Screen Handling...');
+          const pauseResponse = await pauseGameAPI(); // Fixed variable name
+          if (pauseResponse.ok) {
+            console.log('Game Paused:', pauseResponse.data);
+          } else {
+            console.warn('Failed to pause game:', pauseResponse.error);
+          }
+        } catch (error) {
+          console.error('Error pausing game:', error);
+        }
+
+        clearInterval(timerIntervalRef.current);
+        clearInterval(targetMoveIntervalRef.current);
+        setGameState('paused');
+        
+      } else if (gameState === 'paused') {
+        console.log('Resuming game...');
+        
+        // Re-enable motors when resuming
+        try {
+          console.log('Resuming game - enabling motors...');
+          const motorResponse = await enableMotors(gameMode || 'easy');
+          
+          if (motorResponse.ok) {
+            console.log('Motors enabled for resume:', motorResponse.data);
+          } else {
+            console.warn('Failed to enable motors on resume:', motorResponse.error);
+          }
+        } catch (error) {
+          console.error('Error enabling motors on resume:', error);
+        }
+        
+        setGameState('playing');
+        timerIntervalRef.current = setInterval(() => {
+          setTimeLeft(prev => {
+            if (prev <= 1) {
+              clearInterval(timerIntervalRef.current);
+              endGame();
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, GAME_CONSTANTS.TIMER_INTERVAL);
+        
+        targetMoveIntervalRef.current = setInterval(() => {
+          if (isMounted.current) generateTargets();
+        }, settings.targetSpeed);
+      }
+    } catch (error) {
+      console.error('Error in pauseGame:', error);
+    } finally {
+      // Always reset the processing flag after a short delay
+      setTimeout(() => {
+        setIsPausing(false);
+      }, 500);
+    }
+  }, [gameState, settings.targetSpeed, generateTargets, gameMode, endGame, isPausing]);
 
   const handleGameAreaClick = useCallback((e) => {
     if (gameState !== 'playing' || !gameAreaRef.current) return;
@@ -565,9 +605,14 @@ const PlayPage = () => {
               timeLeft={timeLeft} 
             />
             <div className="game-controls">
-              <button className="control-btn pause-btn" onClick={pauseGame}>
-                <span className="btn-icon">⏸</span>
-                <span className="btn-text">Pause</span>
+              <button 
+                className="control-btn pause-btn" 
+                onClick={pauseGame}
+                disabled={isPausing}
+                style={{ opacity: isPausing ? 0.7 : 1 }}
+              >
+                <span className="btn-icon">{isPausing ? '⏳' : '⏸'}</span>
+                <span className="btn-text">{isPausing ? 'Pausing...' : 'Pause'}</span>
               </button>
               <button className="control-btn quit-btn" onClick={endGame}>
                 <span className="btn-icon">✕</span>
@@ -611,9 +656,14 @@ const PlayPage = () => {
             <div className="pause-content">
               <h2 className="pause-title">Game Paused</h2>
               <div className="pause-buttons">
-                <button className="pause-action-btn resume-btn" onClick={pauseGame}>
-                  <span className="btn-icon">▶</span>
-                  <span className="btn-text">Resume</span>
+                <button 
+                  className="pause-action-btn resume-btn" 
+                  onClick={pauseGame}
+                  disabled={isPausing}
+                  style={{ opacity: isPausing ? 0.7 : 1 }}
+                >
+                  <span className="btn-icon">{isPausing ? '⏳' : '▶'}</span>
+                  <span className="btn-text">{isPausing ? 'Resuming...' : 'Resume'}</span>
                 </button>
                 <button className="pause-action-btn quit-btn" onClick={endGame}>
                   <span className="btn-icon">✕</span>
@@ -680,7 +730,5 @@ const PlayPage = () => {
     </>
   );
 }
-
-
 
 export default PlayPage;

@@ -594,6 +594,47 @@ const disableMotors = async (req, res) => {
   }
 };
 
+
+const pauseGame = async (req, res) => {
+  try {
+    const gamePauseCommand = {
+      type: 'pause_game',
+      timestamp: Date.now()
+    };
+    
+    // Send command to NodeMCU
+    const sent = broadcastToNodeMCU(gamePauseCommand);
+    
+    // Also broadcast to web clients
+    broadcastToWeb({
+      type: 'game_paused',
+      timestamp: Date.now()
+    });
+    
+    if (sent) {
+      res.json({
+        success: true,
+        message: 'Game paused',
+        command: gamePauseCommand
+      });
+    } else {
+      res.status(503).json({
+        success: false,
+        message: 'No NodeMCU devices connected',
+        stats: getWebSocketStats()
+      });
+    }
+  } catch (error) {
+    console.error('Error pausing game:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+
 module.exports = {
   startGame,
   stopGame,
@@ -609,5 +650,6 @@ module.exports = {
   getLeaderboard,
   setGameMode,
   enableMotors,
-  disableMotors
+  disableMotors,
+  pauseGame
 };
