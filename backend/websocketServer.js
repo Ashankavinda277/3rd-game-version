@@ -80,14 +80,14 @@ const setupWebSocketServer = (server) => {
     }));
 
     // Handle messages from clients
-    ws.on("message", async (message) => {
+ws.on("message", async (message) => {
       try {
         // First check if the message is valid JSON
         const messageStr = message.toString().trim();
         console.log("Raw message received:", messageStr);
 
         // Handle non-JSON messages (including from NodeMCU/Arduino)
-        if (messageStr === "HIT1" || messageStr === "HIT2"|| messageStr === "HIT3" || messageStr.startsWith("From Server:")) {
+        if (messageStr === "HIT1" || messageStr === "HIT2"|| messageStr === "HIT3" || messageStr === "MISS" || messageStr.startsWith("From Server:")) {
           console.log("Received simple message:", messageStr);
           
           // Auto-identify as NodeMCU if not already identified
@@ -104,8 +104,8 @@ const setupWebSocketServer = (server) => {
             });
           }
 
-          // Handle HIT messages
-          if (messageStr === "HIT1" || messageStr === "HIT2"|| messageStr === "HIT3" ) {
+          // Handle HIT and MISS messages
+          if (messageStr === "HIT1" || messageStr === "HIT2"|| messageStr === "HIT3" || messageStr === "MISS") {
             console.log("🎯 Processing hardware hit:", messageStr);
             
             // Set score increment based on hit type
@@ -113,15 +113,16 @@ const setupWebSocketServer = (server) => {
             if (messageStr === "HIT1") scoreIncrement = 10;
             else if (messageStr === "HIT2") scoreIncrement = 5;
             else if (messageStr === "HIT3") scoreIncrement = 2;
+            else if (messageStr === "MISS") scoreIncrement = 0;
 
             // Create a proper hit message for web clients with score increment
             const hitData = {
-              type: "target_hit",
+              type: messageStr === "MISS" ? "target_miss" : "target_hit",
               targetId: 0,
               timestamp: Date.now(),
               scoreIncrement,
               rawMessage: messageStr,
-              hitType: "direct_hit",
+              hitType: messageStr === "MISS" ? "miss" : "direct_hit",
             };
 
             // Find the most recent active session for hardware hits
@@ -131,14 +132,14 @@ const setupWebSocketServer = (server) => {
               if (activeSession) {
                 console.log("📊 Found active session for hit:", activeSession.sessionId);
                 
-                // Register hit in the active session
+                // Register hit in the active session (even for misses)
                 const result = await GameSessionService.registerHit(
                   activeSession.sessionId,
                   {
                     points: hitData.scoreIncrement,
                     targetId: hitData.targetId,
-                    accuracy: 100,
-                    zone: "center",
+                    accuracy: messageStr === "MISS" ? 0 : 100,
+                    zone: messageStr === "MISS" ? "miss" : "center",
                   }
                 );
 
@@ -149,7 +150,7 @@ const setupWebSocketServer = (server) => {
                   currentScore: result.currentScore,
                   hitCount: result.hitCount,
                   accuracy: result.accuracy,
-                  type: "hit_registered",
+                  type: messageStr === "MISS" ? "miss_registered" : "hit_registered",
                 };
 
                 // Send to all web clients
@@ -159,7 +160,7 @@ const setupWebSocketServer = (server) => {
                   }
                 });
                 
-                console.log("✅ Hit registered successfully - Score:", result.currentScore);
+                console.log("✅ Hit/Miss registered successfully - Score:", result.currentScore);
               } else {
                 console.log("⚠️ No active session found - sending generic hit data");
                 
@@ -183,9 +184,9 @@ const setupWebSocketServer = (server) => {
 
             // Broadcast hit statistics to all clients
             broadcastStatus({
-              type: "hit_registered",
+              type: messageStr === "MISS" ? "miss_registered" : "hit_registered",
               timestamp: Date.now(),
-              message: "Hit detected and processed",
+              message: messageStr === "MISS" ? "Miss detected and processed" : "Hit detected and processed",
               hitData: hitData,
               timestamp: Date.now()
             });
@@ -208,8 +209,102 @@ const setupWebSocketServer = (server) => {
           return; // Exit early after handling non-JSON messages
         }
 
-        // Try to parse as JSON for other messages
-        const data = JSON.parse(messageStr);
+        // FIXED: Better JSON parsing with malformed message handling
+        let data;
+        try {
+          data = JSON.parse(messageStr);
+        } catch (parseError) {
+          console.error("JSON parsing error:", parseError);
+          console.log("Attempting to extract useful data from malformed JSON");
+          
+          // Try to handle malformed JSON from ESP8266
+          if (messageStr.includes('"type":"command_sent"')) {
+            // Extract command information from malformed nested JSON
+            const commandMatch = messageStr.match(/"command_sent":"([^"]+)"/);
+            const descMatch = messageStr.match(/"description":"([^"]+)"/);
+            
+            if (commandMatch && commandMatch[1]) {
+              const command = commandMatch[1];
+              const description = descMatch ? descMatch[1] : "No description";
+              
+              console.log("🔧 Extracted command from malformed JSON:", command, "-", description);
+              
+              // Auto-identify as NodeMCU if not already identified
+              if (ws.clientType === "unidentified") {
+                console.log("Auto-identifying as NodeMCU based on command message");
+                ws.clientType = "nodeMCU";
+                clients.nodeMCU.add(ws);
+                
+                broadcastStatus({
+                  type: "nodeMCU_connected",
+                  timestamp: Date.now(),
+                  message: "NodeMCU device identified from command pattern",
+                  ...getConnectionStats(),
+                });
+              }
+              
+              // Broadcast command execution to web clients
+              const commandData = {
+                type: "command_executed",
+                command: command,
+                description: description,
+                timestamp: Date.now(),
+                source: "nodeMCU"
+              };
+              
+              clients.web.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(JSON.stringify(commandData));
+                }
+              });
+              
+              broadcastStatus({
+                type: "command_processed",
+                command: command,
+                description: description,
+                timestamp: Date.now(),
+                message: `Command '${command}' processed successfully`
+              });
+              
+              return;
+            }
+          }
+          
+          // Handle other malformed message types
+          if (messageStr.includes('"type":"game_state"')) {
+            const stateMatch = messageStr.match(/"value":"([^"]+)"/);
+            if (stateMatch && stateMatch[1]) {
+              const state = stateMatch[1];
+              console.log("🎮 Extracted game state from malformed JSON:", state);
+              
+              broadcastStatus({
+                type: "game_state_update",
+                state: state,
+                timestamp: Date.now(),
+                message: `Game state changed to: ${state}`
+              });
+              
+              return;
+            }
+          }
+          
+          if (messageStr.includes('"type":"hit"') || messageStr.includes('HIT') || messageStr.includes('MISS')) {
+            const hitMatch = messageStr.match(/"value":"([^"]*(?:HIT|MISS)[^"]*)"/);
+            if (hitMatch && hitMatch[1]) {
+              const hitValue = hitMatch[1];
+              console.log("🎯 Extracted hit value from malformed JSON:", hitValue);
+              
+              // Process as hit event (recursive call with clean message)
+              const cleanMessage = Buffer.from(hitValue);
+              ws.emit('message', cleanMessage);
+              return;
+            }
+          }
+          
+          // If we can't extract anything useful, log and continue
+          console.log("❓ Could not extract useful data from malformed message, ignoring");
+          return;
+        }
 
         // Check if this is a device identification message
         if (data.type === "identify") {
@@ -258,7 +353,7 @@ const setupWebSocketServer = (server) => {
         // Auto-identify based on message content if not already identified
         if (ws.clientType === "unidentified") {
           // Check for typical NodeMCU/Arduino message patterns
-          if (data.type && (data.type.includes("motor") || data.type.includes("sensor") || data.type.includes("hit"))) {
+          if (data.type && (data.type.includes("motor") || data.type.includes("sensor") || data.type.includes("hit") || data.type.includes("command") || data.type.includes("game_state"))) {
             console.log("Auto-identifying as NodeMCU based on message content");
             ws.clientType = "nodeMCU";
             clients.nodeMCU.add(ws);
@@ -293,6 +388,27 @@ const setupWebSocketServer = (server) => {
 
         // Handle messages from web clients
         if (ws.clientType === "web") {
+          // Handle game control messages (start, stop, pause, resume, reset)
+          if (["game_start", "game_stop", "game_pause", "game_resume", "game_reset"].includes(data.type)) {
+            console.log("🎮 Game control command received from web client:", data);
+            
+            // Forward to NodeMCU devices
+            clients.nodeMCU.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) {
+                console.log("📤 Sending game control to NodeMCU:", JSON.stringify(data));
+                client.send(JSON.stringify(data));
+              }
+            });
+            
+            // Broadcast to web clients for confirmation
+            broadcastStatus({
+              type: `${data.type}_sent`,
+              timestamp: Date.now(),
+              message: `Game control '${data.type}' sent to hardware`
+            });
+            return;
+          }
+
           // Handle game mode configuration messages
           if (data.type === "set_game_mode") {
             console.log("🎮 Game mode configuration received from web client:", data);
@@ -359,17 +475,77 @@ const setupWebSocketServer = (server) => {
           // Log the specific data from NodeMCU for debugging
           console.log("NodeMCU data received:", data);
 
+          // Handle command confirmation messages
+          if (data.type === "command_sent" || data.type === "command_executed") {
+            console.log("🔧 Command confirmation from NodeMCU:", data);
+            
+            // Broadcast to web clients
+            clients.web.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({
+                  type: "command_confirmed",
+                  command: data.value || data.command,
+                  timestamp: Date.now(),
+                  source: "hardware"
+                }));
+              }
+            });
+            
+            broadcastStatus({
+              type: "command_confirmed",
+              command: data.value || data.command,
+              timestamp: Date.now(),
+              message: "Command confirmed by hardware"
+            });
+            return;
+          }
+
+          // Handle game state updates
+          if (data.type === "game_state") {
+            console.log("🎮 Game state update from NodeMCU:", data);
+            
+            // Forward to web clients
+            clients.web.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({
+                  type: "game_state_update",
+                  state: data.value,
+                  timestamp: Date.now(),
+                  source: "hardware"
+                }));
+              }
+            });
+            
+            broadcastStatus({
+              type: "game_state_update",
+              state: data.value,
+              timestamp: Date.now(),
+              message: `Game state: ${data.value}`
+            });
+            return;
+          }
+
           // Handle simple HIT message format
-          if (data.type === "hit" && data.value === "HIT") {
+          if (data.type === "hit" && (data.value === "HIT" || data.value.includes("HIT") || data.value === "MISS")) {
+            console.log("🎯 Processing NodeMCU hit data:", data);
+            
+            // Determine score based on hit value
+            let scoreIncrement = 0;
+            if (data.value.includes("HIT1") || data.value === "HIT1") scoreIncrement = 10;
+            else if (data.value.includes("HIT2") || data.value === "HIT2") scoreIncrement = 5;
+            else if (data.value.includes("HIT3") || data.value === "HIT3") scoreIncrement = 2;
+            else if (data.value.includes("MISS") || data.value === "MISS") scoreIncrement = 0;
+            else if (data.value === "HIT") scoreIncrement = 10; // Default hit
+            
             // Convert to the expected format for frontend
             const hitData = {
-              type: "target_hit",
+              type: scoreIncrement > 0 ? "target_hit" : "target_miss",
               targetId: data.targetId || 0,
               timestamp: Date.now(),
-              scoreIncrement: 10, // Points per hit
-              accuracy: data.accuracy || 100,
+              scoreIncrement: scoreIncrement,
+              accuracy: scoreIncrement > 0 ? (data.accuracy || 100) : 0,
               hitValue: data.value,
-              zone: data.zone || "center", // bullseye, inner, outer
+              zone: scoreIncrement > 0 ? (data.zone || "center") : "miss",
             };
 
             // Forward processed data to all web clients
@@ -381,33 +557,57 @@ const setupWebSocketServer = (server) => {
 
             // Broadcast hit statistics
             broadcastStatus({
-              type: "hit_registered",
+              type: scoreIncrement > 0 ? "hit_registered" : "miss_registered",
               timestamp: Date.now(),
-              message: "Hit detected from NodeMCU",
+              message: scoreIncrement > 0 ? "Hit detected from NodeMCU" : "Miss detected from NodeMCU",
               hitData: hitData,
             });
 
-            axios
-              .post("http://localhost:5000/api/game/hit", {
-                message: "Hit registered from NodeMCU WebSocket",
-                timestamp: Date.now(),
-                source: "nodeMCU",
-                zone: data.zone || "center",
-                accuracy: data.accuracy || 100,
-              })
-              .then(() => {
-                console.log("✅ Sent HIT to API via axios");
-              })
-              .catch((err) => {
-                console.error("❌ Failed to send HIT to API:", err.message);
-              });
+            // Send to API (only for hits, not misses to avoid unnecessary database operations)
+            if (scoreIncrement > 0) {
+              axios
+                .post("http://localhost:5000/api/game/hit", {
+                  message: "Hit registered from NodeMCU WebSocket",
+                  timestamp: Date.now(),
+                  source: "nodeMCU",
+                  zone: hitData.zone,
+                  accuracy: hitData.accuracy,
+                  points: scoreIncrement
+                })
+                .then(() => {
+                  console.log("✅ Sent HIT to API via axios");
+                })
+                .catch((err) => {
+                  console.error("❌ Failed to send HIT to API:", err.message);
+                });
+            }
+            return;
           }
+          
+          // Handle heartbeat messages
+          if (data.type === "heartbeat") {
+            console.log("💓 Heartbeat from NodeMCU");
+            
+            // Respond to heartbeat
+            ws.send(JSON.stringify({
+              type: "heartbeat_response",
+              timestamp: Date.now()
+            }));
+            return;
+          }
+          
           // Handle any other JSON messages from NodeMCU
           else {
+            console.log("📨 Other NodeMCU message:", data);
+            
             // Forward Arduino Mega data to all web clients
             clients.web.forEach((client) => {
               if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify(data));
+                client.send(JSON.stringify({
+                  ...data,
+                  timestamp: Date.now(),
+                  source: "hardware"
+                }));
               }
             });
           }
@@ -431,20 +631,41 @@ const setupWebSocketServer = (server) => {
           // If it seems to be from a sensor or contains certain keywords
           if (
             rawMessage.includes("HIT") ||
+            rawMessage.includes("MISS") ||
             rawMessage.includes("hit") ||
             rawMessage.includes("target") ||
             ws.clientType === "nodeMCU"
           ) {
-            fallbackData.type = "possible_hit_event";
+            console.log("🎯 Treating unparseable message as possible hit event");
+            
+            // Try to extract hit information
+            let scoreIncrement = 0;
+            if (rawMessage.includes("HIT1")) scoreIncrement = 10;
+            else if (rawMessage.includes("HIT2")) scoreIncrement = 5;
+            else if (rawMessage.includes("HIT3")) scoreIncrement = 2;
+            else if (rawMessage.includes("HIT")) scoreIncrement = 10;
+            else if (rawMessage.includes("MISS")) scoreIncrement = 0;
+            
+            const hitData = {
+              type: scoreIncrement > 0 ? "target_hit" : "target_miss",
+              targetId: 0,
+              timestamp: Date.now(),
+              scoreIncrement: scoreIncrement,
+              rawMessage: rawMessage,
+              hitType: "extracted_from_unparsed",
+            };
 
             // Forward to web clients
             clients.web.forEach((client) => {
               if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify(fallbackData));
+                client.send(JSON.stringify(hitData));
               }
             });
 
-            console.log("Forwarded unparseable message as possible hit event");
+            console.log("✅ Processed unparseable message as hit event");
+          } else {
+            // Log other unparseable messages but don't process them
+            console.log("❓ Ignoring unparseable message that doesn't seem to be a hit event");
           }
         } catch (fallbackError) {
           console.error(

@@ -13,7 +13,7 @@ router.post('/mode/set', gameControlController.setGameMode);
 router.post('/motors/enable', gameControlController.enableMotors);
 router.post('/motors/disable', gameControlController.disableMotors);
 router.post('/pause', gameControlController.pauseGame);
-
+router.post('/play-again', gameControlController.playAgain);
 // Game session routes
 router.post('/session/create', gameControlController.createGameSession);
 router.post('/session/hit', gameControlController.registerHit);
