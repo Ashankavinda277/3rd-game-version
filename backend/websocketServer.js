@@ -346,6 +346,62 @@ const setupWebSocketServer = (server) => {
             });
             return;
           }
+
+          // Handle game control messages (start, stop, pause, resume, reset)
+          if (data.type === "game_start" || data.type === "game_stop" || data.type === "game_pause" || data.type === "game_resume" || data.type === "game_reset") {
+            console.log("🎮 Game control command received from web client:", data);
+            
+            // Forward to NodeMCU devices with clear structure
+            clients.nodeMCU.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) {
+                const gameCommand = {
+                  type: data.type,
+                  gameMode: data.gameMode || "easy",
+                  duration: data.duration || 60,
+                  targetCount: data.targetCount || 10,
+                  timestamp: Date.now()
+                };
+                
+                console.log("📤 Sending game command to NodeMCU:", JSON.stringify(gameCommand));
+                client.send(JSON.stringify(gameCommand));
+              }
+            });
+            
+            // Broadcast to web clients for confirmation
+            let statusType = "";
+            let message = "";
+            
+            switch(data.type) {
+              case "game_start":
+                statusType = "game_started";
+                message = "Game started with countdown";
+                break;
+              case "game_stop":
+                statusType = "game_stopped";
+                message = "Game stopped";
+                break;
+              case "game_pause":
+                statusType = "game_paused";
+                message = "Game paused - showing pause symbol";
+                break;
+              case "game_resume":
+                statusType = "game_resumed";
+                message = "Game resumed";
+                break;
+              case "game_reset":
+                statusType = "game_reset";
+                message = "Game reset";
+                break;
+            }
+            
+            broadcastStatus({
+              type: statusType,
+              gameMode: data.gameMode,
+              timestamp: Date.now(),
+              message: message
+            });
+            return;
+          }
         }
 
         // Process data from NodeMCU (which got it from Mega via Serial)

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import '../styles/pages/PlayPage.css';
 import { useGameContext } from '../contexts/GameContext';
 import Target from '../components/common/Target';
-import { submitScore, enableMotors, disableMotors, createGameSession, endGameSession } from '../services/api';
+import { submitScore, enableMotors, disableMotors, createGameSession, endGameSession, startGame, stopGame, pauseGame, resumeGame, resetGame } from '../services/api';
 import Loader from '../components/common/Loader';
 
 // Constants
@@ -281,66 +281,57 @@ const PlayPage = () => {
   }, [settings]);
 
 
-  // Countdown then start game
-  const startGameWithCountdown = useCallback(() => {
-    let count = 5;
-    setCountdown(count);
-    const countdownInterval = setInterval(() => {
-      if (count > 1) {
-        count--;
-        setCountdown(count);
-      } else {
-        clearInterval(countdownInterval);
-        setCountdown('GO!');
-        setTimeout(() => {
-          setCountdown(null);
-          actuallyStartGame();
-        }, 1000);
-      }
-    }, 1000);
-  }, []);
-
-  // The real game start logic (after countdown)
-  const actuallyStartGame = useCallback(async () => {
-    if (!isMounted.current) return;
+  // Countdown then start game - now handled by Arduino
+  const startGameWithCountdown = useCallback(async () => {
     try {
-      // Enable motors when game starts
-      console.log('Enabling motors for game mode:', gameMode);
-      const modeToSend = gameMode || 'easy';
-      const motorResponse = await enableMotors(modeToSend);
-      if (motorResponse.ok) {
-        console.log('Motors enabled successfully:', motorResponse.data);
+      // Send GAME_START command to Arduino (which will show countdown 3-2-1-GO and then start game)
+      console.log('Starting game with countdown on Arduino display...');
+      const gameMode = gameMode || 'easy';
+      const startResponse = await startGame(gameMode, settings.gameDuration, settings.targetCount);
+      
+      if (startResponse.ok) {
+        console.log('Game start command sent:', startResponse.data);
+        // Arduino will handle countdown display and motor control
+        // Set game state to playing immediately since Arduino manages the countdown
+        setGameState('playing');
+        setScore(0);
+        setTimeLeft(settings.gameDuration);
+        totalClicks.current = 0;
+        setHitPositions([]);
+        setMissPositions([]);
+        gameStartTime.current = Date.now();
+        generateTargets();
+        setupWebSocket();
+
+        // Start the web timer
+        timerIntervalRef.current = setInterval(() => {
+          setTimeLeft(prev => {
+            if (prev <= 1) {
+              clearInterval(timerIntervalRef.current);
+              endGame();
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, GAME_CONSTANTS.TIMER_INTERVAL);
+
+        targetMoveIntervalRef.current = setInterval(() => {
+          if (isMounted.current) generateTargets();
+        }, settings.targetSpeed);
+        
       } else {
-        console.warn('Failed to enable motors:', motorResponse.error);
+        console.warn('Failed to start game:', startResponse.error);
       }
     } catch (error) {
-      console.error('Error enabling motors:', error);
+      console.error('Error starting game:', error);
     }
-    setGameState('playing');
-    setScore(0);
-    setTimeLeft(settings.gameDuration);
-    totalClicks.current = 0;
-    setHitPositions([]);
-    setMissPositions([]);
-    gameStartTime.current = Date.now();
-    generateTargets();
-    setupWebSocket();
+  }, [gameMode, settings, generateTargets, endGame]);
 
-    timerIntervalRef.current = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timerIntervalRef.current);
-          endGame();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, GAME_CONSTANTS.TIMER_INTERVAL);
-
-    targetMoveIntervalRef.current = setInterval(() => {
-      if (isMounted.current) generateTargets();
-    }, settings.targetSpeed);
-  }, [settings, generateTargets, gameMode]);
+  // Legacy function - now replaced by Arduino countdown
+  const actuallyStartGame = useCallback(async () => {
+    // This function is now deprecated - Arduino handles the countdown and motor control
+    console.log('actuallyStartGame called - now handled by Arduino');
+  }, []);
 
   const calculateGameStats = useCallback((finalScore, totalClicksCount, gameDuration) => {
     const accuracy = totalClicksCount > 0 ? (finalScore / totalClicksCount) * 100 : 0;
@@ -376,6 +367,16 @@ const PlayPage = () => {
     if (!isMounted.current) return;
     
     try {
+      // Send GAME_STOP command to Arduino (which will stop motors and clear display)
+      console.log('Ending game - sending GAME_STOP command...');
+      const stopResponse = await stopGame();
+      
+      if (stopResponse.ok) {
+        console.log('Game stop command sent:', stopResponse.data);
+      } else {
+        console.warn('Failed to send stop command:', stopResponse.error);
+      }
+      
       // End the game session if one exists
       if (currentSessionId) {
         console.log('Ending game session:', currentSessionId);
@@ -387,16 +388,6 @@ const PlayPage = () => {
           console.warn('Failed to end game session:', endSessionResponse.error);
         }
         setCurrentSessionId(null);
-      }
-      
-      // Disable motors when game ends
-      console.log('Disabling motors...');
-      const motorResponse = await disableMotors();
-      
-      if (motorResponse.ok) {
-        console.log('Motors disabled successfully:', motorResponse.data);
-      } else {
-        console.warn('Failed to disable motors:', motorResponse.error);
       }
     } catch (error) {
       console.error('Error in game cleanup:', error);
@@ -421,38 +412,38 @@ const PlayPage = () => {
     });
   }, [score, settings.gameDuration, timeLeft, calculateGameStats, user, setNeedsRefresh, submitGameScore, currentSessionId]);
 
-  const pauseGame = useCallback(async () => {
+  const pauseGameFunction = useCallback(async () => {
     if (gameState === 'playing') {
-      // Disable motors when pausing
+      // Send pause command to Arduino (which will show pause symbol and stop motors)
       try {
-        console.log('Pausing game - disabling motors...');
-        const motorResponse = await disableMotors();
+        console.log('Pausing game - sending GAME_PAUSE command...');
+        const pauseResponse = await pauseGame();
         
-        if (motorResponse.ok) {
-          console.log('Motors disabled for pause:', motorResponse.data);
+        if (pauseResponse.ok) {
+          console.log('Game pause command sent:', pauseResponse.data);
         } else {
-          console.warn('Failed to disable motors on pause:', motorResponse.error);
+          console.warn('Failed to send pause command:', pauseResponse.error);
         }
       } catch (error) {
-        console.error('Error disabling motors on pause:', error);
+        console.error('Error sending pause command:', error);
       }
       
       clearInterval(timerIntervalRef.current);
       clearInterval(targetMoveIntervalRef.current);
       setGameState('paused');
     } else if (gameState === 'paused') {
-      // Re-enable motors when resuming
+      // Send resume command to Arduino (which will restart countdown or resume game)
       try {
-        console.log('Resuming game - enabling motors...');
-        const motorResponse = await enableMotors(gameMode || 'easy');
+        console.log('Resuming game - sending GAME_RESUME command...');
+        const resumeResponse = await resumeGame();
         
-        if (motorResponse.ok) {
-          console.log('Motors enabled for resume:', motorResponse.data);
+        if (resumeResponse.ok) {
+          console.log('Game resume command sent:', resumeResponse.data);
         } else {
-          console.warn('Failed to enable motors on resume:', motorResponse.error);
+          console.warn('Failed to send resume command:', resumeResponse.error);
         }
       } catch (error) {
-        console.error('Error enabling motors on resume:', error);
+        console.error('Error sending resume command:', error);
       }
       
       setGameState('playing');
@@ -470,7 +461,7 @@ const PlayPage = () => {
         if (isMounted.current) generateTargets();
       }, settings.targetSpeed);
     }
-  }, [gameState, settings.targetSpeed, generateTargets, gameMode, endGame]);
+  }, [gameState, settings.targetSpeed, generateTargets, endGame]);
 
   const handleGameAreaClick = useCallback((e) => {
     if (gameState !== 'playing' || !gameAreaRef.current) return;
@@ -543,7 +534,7 @@ const PlayPage = () => {
               timeLeft={timeLeft} 
             />
             <div className="game-controls">
-              <button className="control-btn pause-btn" onClick={pauseGame}>
+              <button className="control-btn pause-btn" onClick={pauseGameFunction}>
                 <span className="btn-icon">⏸</span>
                 <span className="btn-text">Pause</span>
               </button>
@@ -589,7 +580,7 @@ const PlayPage = () => {
             <div className="pause-content">
               <h2 className="pause-title">Game Paused</h2>
               <div className="pause-buttons">
-                <button className="pause-action-btn resume-btn" onClick={pauseGame}>
+                <button className="pause-action-btn resume-btn" onClick={pauseGameFunction}>
                   <span className="btn-icon">▶</span>
                   <span className="btn-text">Resume</span>
                 </button>

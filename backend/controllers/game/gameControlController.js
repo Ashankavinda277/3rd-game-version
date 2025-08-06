@@ -594,6 +594,149 @@ const disableMotors = async (req, res) => {
   }
 };
 
+// Pause game command
+const pauseGame = async (req, res) => {
+  try {
+    const gamePauseCommand = {
+      type: 'game_pause',
+      timestamp: Date.now()
+    };
+    
+    // Send command to NodeMCU
+    const sent = broadcastToNodeMCU(gamePauseCommand);
+    
+    // Also broadcast to web clients
+    broadcastToWeb({
+      type: 'game_paused',
+      timestamp: Date.now()
+    });
+    
+    if (sent) {
+      res.json({
+        success: true,
+        message: 'Game pause command sent to device',
+        command: gamePauseCommand
+      });
+    } else {
+      res.status(503).json({
+        success: false,
+        message: 'No NodeMCU devices connected',
+        stats: getWebSocketStats()
+      });
+    }
+  } catch (error) {
+    console.error('Error pausing game:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Resume game command
+const resumeGame = async (req, res) => {
+  try {
+    const gameResumeCommand = {
+      type: 'game_resume',
+      timestamp: Date.now()
+    };
+    
+    // Send command to NodeMCU
+    const sent = broadcastToNodeMCU(gameResumeCommand);
+    
+    // Also broadcast to web clients
+    broadcastToWeb({
+      type: 'game_resumed',
+      timestamp: Date.now()
+    });
+    
+    if (sent) {
+      res.json({
+        success: true,
+        message: 'Game resume command sent to device',
+        command: gameResumeCommand
+      });
+    } else {
+      res.status(503).json({
+        success: false,
+        message: 'No NodeMCU devices connected',
+        stats: getWebSocketStats()
+      });
+    }
+  } catch (error) {
+    console.error('Error resuming game:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Test Arduino commands directly
+const testArduinoCommands = async (req, res) => {
+  try {
+    const { command } = req.params;
+    
+    let arduinoCommand = "";
+    let description = "";
+    
+    switch(command) {
+      case 'start':
+        arduinoCommand = { type: 'game_start', gameMode: 'easy', timestamp: Date.now() };
+        description = 'Game start with countdown';
+        break;
+      case 'pause':
+        arduinoCommand = { type: 'game_pause', timestamp: Date.now() };
+        description = 'Game pause with symbol display';
+        break;
+      case 'resume':
+        arduinoCommand = { type: 'game_resume', timestamp: Date.now() };
+        description = 'Game resume';
+        break;
+      case 'stop':
+        arduinoCommand = { type: 'game_stop', timestamp: Date.now() };
+        description = 'Game stop';
+        break;
+      case 'reset':
+        arduinoCommand = { type: 'game_reset', timestamp: Date.now() };
+        description = 'Game reset';
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid command. Use: start, pause, resume, stop, reset'
+        });
+    }
+    
+    // Send command to NodeMCU
+    const sent = broadcastToNodeMCU(arduinoCommand);
+    
+    if (sent) {
+      res.json({
+        success: true,
+        message: `Arduino test command sent: ${description}`,
+        command: arduinoCommand,
+        instructions: 'NodeMCU should convert this to appropriate Serial command for Arduino'
+      });
+    } else {
+      res.status(503).json({
+        success: false,
+        message: 'No NodeMCU devices connected',
+        stats: getWebSocketStats()
+      });
+    }
+  } catch (error) {
+    console.error('Error sending test command:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   startGame,
   stopGame,
@@ -609,5 +752,8 @@ module.exports = {
   getLeaderboard,
   setGameMode,
   enableMotors,
-  disableMotors
+  disableMotors,
+  pauseGame,
+  resumeGame,
+  testArduinoCommands
 };

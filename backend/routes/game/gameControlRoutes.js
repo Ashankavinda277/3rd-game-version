@@ -5,6 +5,8 @@ const gameControlController = require('../../controllers/game/gameControlControl
 // Game control routes
 router.post('/start', gameControlController.startGame);
 router.post('/stop', gameControlController.stopGame);
+router.post('/pause', gameControlController.pauseGame);
+router.post('/resume', gameControlController.resumeGame);
 router.post('/reset', gameControlController.resetGame);
 router.post('/command', gameControlController.sendCommand);
 
@@ -24,6 +26,9 @@ router.get('/leaderboard', gameControlController.getLeaderboard);
 // Test endpoint for WebSocket communication
 router.get('/test', gameControlController.testConnection);
 router.get('/status', gameControlController.getStatus);
+
+// Arduino command test endpoints
+router.post('/test/arduino/:command', gameControlController.testArduinoCommands);
 
 // Manual test routes for debugging
 router.post('/test/mode/:gameMode', (req, res) => {

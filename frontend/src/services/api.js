@@ -80,18 +80,6 @@ export const fetchGameSettings = async (mode) => {
   return apiRequest(`/game/settings/${mode}`);
 };
 
-export const startGame = async (gameConfig) => {
-  return apiRequest("/game/control/start", "POST", gameConfig);
-};
-
-export const stopGame = async () => {
-  return apiRequest("/game/control/stop", "POST");
-};
-
-export const resetGame = async () => {
-  return apiRequest("/game/control/reset", "POST");
-};
-
 export const sendCommand = async (command, data = {}) => {
   return apiRequest("/game/control/command", "POST", { command, data });
 };
@@ -126,6 +114,27 @@ export const enableMotors = async (gameMode) => {
 
 export const disableMotors = async () => {
   return apiRequest('/game/control/motors/disable', 'POST');
+};
+
+// Game control API functions
+export const startGame = async (gameMode, duration, targetCount) => {
+  return apiRequest('/game/control/start', 'POST', { gameMode, duration, targetCount });
+};
+
+export const stopGame = async () => {
+  return apiRequest('/game/control/stop', 'POST');
+};
+
+export const pauseGame = async () => {
+  return apiRequest('/game/control/pause', 'POST');
+};
+
+export const resumeGame = async () => {
+  return apiRequest('/game/control/resume', 'POST');
+};
+
+export const resetGame = async () => {
+  return apiRequest('/game/control/reset', 'POST');
 };
 
 // Game Session Management
