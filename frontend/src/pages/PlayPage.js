@@ -1,11 +1,25 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import '../styles/pages/PlayPage.css';
-import { useGameContext } from '../contexts/GameContext';
-import Target from '../components/common/Target';
-import { submitScore, enableMotors, disableMotors, createGameSession, endGameSession } from '../services/api';
-import Loader from '../components/common/Loader';
-
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
+import { useNavigate } from "react-router-dom";
+import "../styles/pages/PlayPage.css";
+import { useGameContext } from "../contexts/GameContext";
+import Target from "../components/common/Target";
+import {
+  submitScore,
+  enableMotors,
+  disableMotors,
+  createGameSession,
+  endGameSession,
+  pauseGameAPI,
+  playAgainAPI,
+  startGame
+} from "../services/api";
+import Loader from "../components/common/Loader";
 
 // Constants
 const GAME_CONSTANTS = {
@@ -13,7 +27,7 @@ const GAME_CONSTANTS = {
   TARGET_SPAWN_DELAY: 100,
   TIMER_INTERVAL: 1000,
   RED_TIME_THRESHOLD: 10,
-  BLINK_TIME_THRESHOLD: 5
+  BLINK_TIME_THRESHOLD: 5,
 };
 
 const DIFFICULTY_SETTINGS = {
@@ -22,29 +36,29 @@ const DIFFICULTY_SETTINGS = {
     targetSpeed: 1500,
     targetSize: 80,
     targetCount: 1,
-    targetColors: ['#27ae60']
+    targetColors: ["#27ae60"],
   },
   medium: {
     gameDuration: 60,
     targetSpeed: 1200,
     targetSize: 70,
     targetCount: 2,
-    targetColors: ['#2ecc71', '#e67e22']
+    targetColors: ["#2ecc71", "#e67e22"],
   },
   hard: {
     gameDuration: 45,
     targetSpeed: 800,
     targetSize: 60,
     targetCount: 3,
-    targetColors: ['#e74c3c', '#3498db', '#e67e22']
-  }
+    targetColors: ["#e74c3c", "#3498db", "#e67e22"],
+  },
 };
 
 // Enhanced Game Info Component
 const GameInfoPanel = ({ score, gameMode, timeLeft }) => {
   const isRed = timeLeft <= GAME_CONSTANTS.RED_TIME_THRESHOLD;
   const shouldBlink = timeLeft <= GAME_CONSTANTS.BLINK_TIME_THRESHOLD;
-  
+
   return (
     <div className="game-info-panel">
       <div className="info-card score-card">
@@ -53,11 +67,15 @@ const GameInfoPanel = ({ score, gameMode, timeLeft }) => {
       </div>
       <div className="info-card mode-card">
         <div className="info-label">Mode</div>
-        <div className="info-value mode-value">{gameMode || 'easy'}</div>
+        <div className="info-value mode-value">{gameMode || "easy"}</div>
       </div>
       <div className="info-card time-card">
         <div className="info-label">Time Left</div>
-        <div className={`info-value time-value ${isRed ? 'red' : ''} ${shouldBlink ? 'blink' : ''}`}>
+        <div
+          className={`info-value time-value ${isRed ? "red" : ""} ${
+            shouldBlink ? "blink" : ""
+          }`}
+        >
           {timeLeft}s
         </div>
       </div>
@@ -66,8 +84,9 @@ const GameInfoPanel = ({ score, gameMode, timeLeft }) => {
 };
 
 const PlayPage = () => {
-  const { user, gameMode, gameSettings, setNeedsRefresh, loading } = useGameContext();
-  const [gameState, setGameState] = useState('ready');
+  const { user, gameMode, gameSettings, setNeedsRefresh, loading } =
+    useGameContext();
+  const [gameState, setGameState] = useState("ready");
   const [countdown, setCountdown] = useState(null); // null or number or 'GO!'
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -75,6 +94,7 @@ const PlayPage = () => {
   const [hitPositions, setHitPositions] = useState([]);
   const [missPositions, setMissPositions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPausing, setIsPausing] = useState(false);
   const [settings, setSettings] = useState(DIFFICULTY_SETTINGS.easy);
   const [gameStats, setGameStats] = useState({
     accuracy: 0,
@@ -82,13 +102,14 @@ const PlayPage = () => {
     totalClicks: 0,
     totalHits: 0,
   });
-  const [currentSessionId, setCurrentSessionId] = useState(null); // Track current game session
+  const [currentSessionId, setCurrentSessionId] = useState(null);
   const [showFinal, setShowFinal] = useState(true);
   const [finalPageStart, setFinalPageStart] = useState(false);
 
   const gameAreaRef = useRef(null);
   const timerIntervalRef = useRef(null);
   const targetMoveIntervalRef = useRef(null);
+  const countdownAudioRef = useRef(null);
   const totalClicks = useRef(0);
   const isMounted = useRef(true);
   const gameStartTime = useRef(null);
@@ -102,7 +123,7 @@ const PlayPage = () => {
   }, [gameState]);
 
   useEffect(() => {
-    const mode = gameMode || 'easy';
+    const mode = gameMode || "easy";
     const newSettings = DIFFICULTY_SETTINGS[mode] || DIFFICULTY_SETTINGS.easy;
     setSettings(newSettings);
     setTimeLeft(newSettings.gameDuration);
@@ -114,27 +135,30 @@ const PlayPage = () => {
       clearInterval(timerIntervalRef.current);
       clearInterval(targetMoveIntervalRef.current);
       closeWebSocket();
-      
+
       // Disable motors when component unmounts
-      disableMotors().catch(error => {
-        console.error('Error disabling motors on unmount:', error);
+      disableMotors().catch((error) => {
+        console.error("Error disabling motors on unmount:", error);
       });
     };
   }, []);
 
   useEffect(() => {
     if (!loading && (user === null || user === false)) {
-      alert('You must be logged in to play!');
-      navigate('/register');
+      alert("You must be logged in to play!");
+      navigate("/register");
     }
   }, [user, loading, navigate]);
 
-  const setupWebSocket = () => {
+  const setupWebSocket = useCallback(() => {
     try {
       // Handle missing process environment variable
-      const wsUrl = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_WS_URL) 
-        ? process.env.REACT_APP_WS_URL 
-        : 'ws://localhost:5000';
+      const wsUrl =
+        typeof process !== "undefined" &&
+        process.env &&
+        process.env.REACT_APP_WS_URL
+          ? process.env.REACT_APP_WS_URL
+          : "ws://localhost:5000";
       wsRef.current = new WebSocket(wsUrl);
 
       wsRef.current.onopen = () => {
@@ -142,76 +166,101 @@ const PlayPage = () => {
           type: "identify",
           clientType: "web",
           sessionId: currentSessionId,
-          playerName: user?.username || "Guest"
+          playerName: user?.username || "Guest",
         };
         // Store sessionId in the WebSocket for backend reference
         wsRef.current.sessionId = currentSessionId;
         wsRef.current.send(JSON.stringify(handshakeMessage));
-        console.log('WebSocket connected and session registered:', currentSessionId);
+        console.log(
+          "WebSocket connected and session registered:",
+          currentSessionId
+        );
       };
 
       wsRef.current.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log('WebSocket message received:', data);
+          console.log("WebSocket message received:", data);
 
           // Priority 1: Handle session-aware hardware hit detection
-          if (data.type === 'hit_registered' && data.sessionId === currentSessionId) {
+          if (
+            data.type === "hit_registered" &&
+            data.sessionId === currentSessionId
+          ) {
             setScore(data.currentScore);
-            console.log('✅ Session hit registered - Score updated to:', data.currentScore);
-            
+            console.log(
+              "✅ Session hit registered - Score updated to:",
+              data.currentScore
+            );
+
             // Add visual hit indicator for session hits
             const rect = gameAreaRef.current?.getBoundingClientRect();
             if (rect) {
               const centerX = rect.width / 2;
               const centerY = rect.height / 2;
-              setHitPositions(prev => [...prev, { x: centerX, y: centerY, id: Date.now() }]);
+              setHitPositions((prev) => [
+                ...prev,
+                { x: centerX, y: centerY, id: Date.now() },
+              ]);
             }
             return; // Exit early for session hits
           }
 
           // Priority 2: Handle session-aware hits without matching sessionId (fallback)
-          if (data.type === 'hit_registered' && data.currentScore && !currentSessionId) {
+          if (
+            data.type === "hit_registered" &&
+            data.currentScore &&
+            !currentSessionId
+          ) {
             setScore(data.currentScore);
-            console.log('📊 Session hit received (no local session) - Score updated to:', data.currentScore);
-            
+            console.log(
+              "📊 Session hit received (no local session) - Score updated to:",
+              data.currentScore
+            );
+
             // Add visual hit indicator
             const rect = gameAreaRef.current?.getBoundingClientRect();
             if (rect) {
               const centerX = rect.width / 2;
               const centerY = rect.height / 2;
-              setHitPositions(prev => [...prev, { x: centerX, y: centerY, id: Date.now() }]);
+              setHitPositions((prev) => [
+                ...prev,
+                { x: centerX, y: centerY, id: Date.now() },
+              ]);
             }
             return;
           }
 
           // Priority 3: Handle direct hit messages from hardware (legacy/fallback)
-          if (data.type === 'target_hit' || data.type === 'hit') {
-            console.log('🎯 Processing direct hardware hit:', data);
+          if (data.type === "target_hit" || data.type === "hit") {
+            console.log("🎯 Processing direct hardware hit:", data);
             let points = 0;
-            if (data.value === 'HIT1') {
+            if (data.value === "HIT1") {
               points = 10;
-            } else if (data.value === 'HIT2') {
+            } else if (data.value === "HIT2") {
               points = 5;
-            } else if (data.value === 'HIT3') {
+            } else if (data.value === "HIT3") {
               points = 2;
             }
             if (points > 0) {
-              setScore(prev => {
+              setScore((prev) => {
                 const newScore = prev + points;
                 console.log(`HIT! ${points} score ${data.value}`);
                 return newScore;
               });
-            } else if (data.scoreIncrement && typeof data.scoreIncrement === 'number') {
-              setScore(prev => {
+            } else if (
+              data.scoreIncrement &&
+              typeof data.scoreIncrement === "number"
+            ) {
+              setScore((prev) => {
                 const newScore = prev + data.scoreIncrement;
-                console.log('Score incremented by hardware hit:', newScore);
+                console.log("Score incremented by hardware hit:", newScore);
                 return newScore;
               });
-            } else if (data.value === 'HIT') {
-              setScore(prev => {
+            } else if (data.value === "HIT") {
+              setScore((prev) => {
                 const newScore = prev + 1;
-                console.log('Hardware hit detected, score:', newScore);
+                console.log("Hardware hit detected, score:", newScore);
                 return newScore;
               });
             }
@@ -220,36 +269,69 @@ const PlayPage = () => {
             if (rect) {
               const centerX = rect.width / 2;
               const centerY = rect.height / 2;
-              setHitPositions(prev => [...prev, { x: centerX, y: centerY, id: Date.now() }]);
+              setHitPositions((prev) => [
+                ...prev,
+                { x: centerX, y: centerY, id: Date.now() },
+              ]);
               setTimeout(generateTargets, 100);
             }
           }
 
+          // Handle miss messages from hardware
+          if (data.type === "target_miss" || data.type === "miss_registered") {
+            console.log("❌ Processing hardware miss:", data);
+            
+            // Add visual miss indicator
+            const rect = gameAreaRef.current?.getBoundingClientRect();
+            if (rect) {
+              const centerX = rect.width / 2;
+              const centerY = rect.height / 2;
+              setMissPositions((prev) => [
+                ...prev,
+                { x: centerX, y: centerY, id: Date.now() },
+              ]);
+            }
+          }
+
           // Handle count updates
-          if (data.type === 'count' && data.count !== undefined) {
+          if (data.type === "count" && data.count !== undefined) {
             setScore(data.count);
           }
 
           // Handle position-based hits for visual feedback
-          if (data.type === 'hit' && data.position) {
-            setHitPositions(prev => [...prev, {
-              x: data.position.x,
-              y: data.position.y,
-              id: Date.now()
-            }]);
+          if (data.type === "hit" && data.position) {
+            setHitPositions((prev) => [
+              ...prev,
+              {
+                x: data.position.x,
+                y: data.position.y,
+                id: Date.now(),
+              },
+            ]);
           }
+
+          // Handle game control confirmations
+          if (data.type === "command_confirmed" || data.type === "command_executed") {
+            console.log("🎮 Game command confirmed:", data);
+          }
+
+          // Handle game state updates from hardware
+          if (data.type === "game_state_update") {
+            console.log("🎮 Game state update from hardware:", data.state);
+          }
+
         } catch (error) {
-          console.error('WebSocket JSON error:', error);
+          console.error("WebSocket JSON error:", error);
         }
       };
 
-      wsRef.current.onclose = () => console.log('WebSocket closed');
-      wsRef.current.onerror = (error) => console.error('WebSocket error:', error);
-
+      wsRef.current.onclose = () => console.log("WebSocket closed");
+      wsRef.current.onerror = (error) =>
+        console.error("WebSocket error:", error);
     } catch (error) {
-      console.error('WebSocket setup failed:', error);
+      console.error("WebSocket setup failed:", error);
     }
-  };
+  }, [currentSessionId, user]);
 
   const closeWebSocket = () => {
     if (wsRef.current) {
@@ -273,7 +355,7 @@ const PlayPage = () => {
       while (!validPosition && attempts < 20) {
         left = Math.random() * (rect.width - targetSize);
         top = Math.random() * (rect.height - targetSize);
-        validPosition = newTargets.every(target => {
+        validPosition = newTargets.every((target) => {
           const distance = Math.hypot(left - target.left, top - target.top);
           return distance >= minDistance;
         });
@@ -286,12 +368,13 @@ const PlayPage = () => {
         top,
         color: targetColors[i % targetColors.length],
         size: targetSize,
-        createdAt: Date.now()
+        createdAt: Date.now(),
       });
     }
 
     if (isMounted.current) setTargets(newTargets);
   }, [settings]);
+
 
 
   // Countdown then start game
@@ -313,23 +396,71 @@ const PlayPage = () => {
   }, 1000);
 }, []);
 
-  // The real game start logic (after countdown)
+  // FIXED: Properly declared startGameWithCountdown function
+  const startGameWithCountdown = useCallback(() => {
+    let count = 5;
+    setCountdown(count);
+    const countdownInterval = setInterval(() => {
+      if (count > 1) {
+        count--;
+        setCountdown(count);
+      } else {
+        clearInterval(countdownInterval);
+        setCountdown("GO!");
+        setTimeout(() => {
+          setCountdown(null);
+          actuallyStartGame();
+        }, 1000);
+      }
+    }, 1000);
+  }, []);
+
+
+  // FIXED: Added actuallyStartGame to dependencies
   const actuallyStartGame = useCallback(async () => {
     if (!isMounted.current) return;
+    
     try {
+      // Create game session first
+      console.log("Creating game session...");
+      const sessionResponse = await createGameSession({
+        playerName: user?.username || "Guest",
+        gameMode: gameMode || "easy",
+        userId: user?.id || user?._id
+      });
+
+      if (sessionResponse.ok) {
+        setCurrentSessionId(sessionResponse.data.sessionId);
+        console.log("Game session created:", sessionResponse.data.sessionId);
+      } else {
+        console.warn("Failed to create game session:", sessionResponse.error);
+      }
+
       // Enable motors when game starts
-      console.log('Enabling motors for game mode:', gameMode);
-      const modeToSend = gameMode || 'easy';
+      console.log("Enabling motors for game mode:", gameMode);
+      const modeToSend = gameMode || "easy";
+      
+      // Send game start command to hardware
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({
+          type: "game_start",
+          gameMode: modeToSend,
+          timestamp: Date.now()
+        }));
+        console.log("Sent game_start command to hardware");
+      }
+
       const motorResponse = await enableMotors(modeToSend);
       if (motorResponse.ok) {
-        console.log('Motors enabled successfully:', motorResponse.data);
+        console.log("Motors enabled successfully:", motorResponse.data);
       } else {
-        console.warn('Failed to enable motors:', motorResponse.error);
+        console.warn("Failed to enable motors:", motorResponse.error);
       }
     } catch (error) {
-      console.error('Error enabling motors:', error);
+      console.error("Error starting game:", error);
     }
-    setGameState('playing');
+
+    setGameState("playing");
     setScore(0);
     setTimeLeft(settings.gameDuration);
     totalClicks.current = 0;
@@ -339,216 +470,390 @@ const PlayPage = () => {
     generateTargets();
     setupWebSocket();
 
-  timerIntervalRef.current = setInterval(() => {
-  setTimeLeft(prev => {
-    if (prev <= 1) {
-      clearInterval(timerIntervalRef.current);
-      endGame();
-      return 0;
-    }
+    timerIntervalRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerIntervalRef.current);
+          endGame();
+          return 0;
+        }
 
-    // ▶️ Play countdown at 6 seconds to align with 5s display
-    if (prev === 6 && countdownAudioRef.current) {
-      countdownAudioRef.current.play().catch(err => {
-        console.warn("Countdown audio failed to play:", err);
+        // ▶️ Play countdown at 6 seconds to align with 5s display
+        if (prev === 6 && countdownAudioRef.current) {
+          countdownAudioRef.current.play().catch((err) => {
+            console.warn("Countdown audio failed to play:", err);
+          });
+        }
+
+        return prev - 1;
       });
-    }
-
-    return prev - 1;
-  });
-}, GAME_CONSTANTS.TIMER_INTERVAL);
-
+    }, GAME_CONSTANTS.TIMER_INTERVAL);
 
     targetMoveIntervalRef.current = setInterval(() => {
       if (isMounted.current) generateTargets();
     }, settings.targetSpeed);
-  }, [settings, generateTargets, gameMode]);
+  }, [settings, generateTargets, gameMode, setupWebSocket, user]);
 
-  const calculateGameStats = useCallback((finalScore, totalClicksCount, gameDuration) => {
-    const accuracy = totalClicksCount > 0 ? (finalScore / totalClicksCount) * 100 : 0;
-    const timeElapsed = gameDuration - timeLeft;
-    const hitsPerSecond = timeElapsed > 0 ? finalScore / timeElapsed : 0;
-    return { accuracy, hitsPerSecond, totalClicks: totalClicksCount, totalHits: finalScore };
-  }, [timeLeft]);
+  const calculateGameStats = useCallback(
+    (finalScore, totalClicksCount, gameDuration) => {
+      const accuracy =
+        totalClicksCount > 0 ? (finalScore / totalClicksCount) * 100 : 0;
+      const timeElapsed = gameDuration - timeLeft;
+      const hitsPerSecond = timeElapsed > 0 ? finalScore / timeElapsed : 0;
+      return {
+        accuracy,
+        hitsPerSecond,
+        totalClicks: totalClicksCount,
+        totalHits: finalScore,
+      };
+    },
+    [timeLeft]
+  );
 
-  const submitGameScore = useCallback(async (finalScore, stats, timePlayedOverride) => {
-    if (!isMounted.current) return;
-    setIsLoading(true);
-    try {
-      // Defensive: handle missing user gracefully
-      const userId = user && (user.id || user._id) ? (user.id || user._id) : null;
-      const username = user && user.username ? user.username : 'Guest';
-      const response = await submitScore({
-        user: userId,
-        username: username,
-        score: finalScore,
-        accuracy: stats.accuracy,
-        gameMode: gameMode || 'easy',
-        timePlayed: typeof timePlayedOverride === 'number' ? timePlayedOverride : settings.gameDuration
-      });
-      if (!response.ok) console.error('Submit failed:', response.error);
-    } catch (err) {
-      console.error('Submit error:', err);
-    } finally {
-      if (isMounted.current) setIsLoading(false);
-    }
-  }, [user, gameMode, settings.gameDuration]);
+  const submitGameScore = useCallback(
+    async (finalScore, stats, timePlayedOverride) => {
+      if (!isMounted.current) return;
+      setIsLoading(true);
+      try {
+        // Defensive: handle missing user gracefully
+        const userId =
+          user && (user.id || user._id) ? user.id || user._id : null;
+        const username = user && user.username ? user.username : "Guest";
+        const response = await submitScore({
+          user: userId,
+          username: username,
+          score: finalScore,
+          accuracy: stats.accuracy,
+          gameMode: gameMode || "easy",
+          timePlayed:
+            typeof timePlayedOverride === "number"
+              ? timePlayedOverride
+              : settings.gameDuration,
+        });
+        if (!response.ok) console.error("Submit failed:", response.error);
+      } catch (err) {
+        console.error("Submit error:", err);
+      } finally {
+        if (isMounted.current) setIsLoading(false);
+      }
+    },
+    [user, gameMode, settings.gameDuration]
+  );
 
   const endGame = useCallback(async () => {
     if (!isMounted.current) return;
-    
+
     try {
+      // Send game stop command to hardware
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({
+          type: "game_stop",
+          timestamp: Date.now()
+        }));
+        console.log("Sent game_stop command to hardware");
+      }
+
       // End the game session if one exists
       if (currentSessionId) {
-        console.log('Ending game session:', currentSessionId);
+        console.log("Ending game session:", currentSessionId);
         const endSessionResponse = await endGameSession(currentSessionId);
-        
+
         if (endSessionResponse.ok) {
-          console.log('Game session ended successfully:', endSessionResponse.data);
+          console.log(
+            "Game session ended successfully:",
+            endSessionResponse.data
+          );
         } else {
-          console.warn('Failed to end game session:', endSessionResponse.error);
+          console.warn("Failed to end game session:", endSessionResponse.error);
         }
         setCurrentSessionId(null);
       }
-      
+
       // Disable motors when game ends
-      console.log('Disabling motors...');
+      console.log("Disabling motors...");
       const motorResponse = await disableMotors();
-      
+
       if (motorResponse.ok) {
-        console.log('Motors disabled successfully:', motorResponse.data);
+        console.log("Motors disabled successfully:", motorResponse.data);
       } else {
-        console.warn('Failed to disable motors:', motorResponse.error);
+        console.warn("Failed to disable motors:", motorResponse.error);
       }
     } catch (error) {
-      console.error('Error in game cleanup:', error);
+      console.error("Error in game cleanup:", error);
     }
-    
+
     clearInterval(timerIntervalRef.current);
     clearInterval(targetMoveIntervalRef.current);
     closeWebSocket();
-    setGameState('finished');
+    setGameState("finished");
     // Calculate actual time played if quitting early
     const timePlayed = settings.gameDuration - timeLeft;
-    const finalStats = calculateGameStats(score, totalClicks.current, timePlayed);
+    const finalStats = calculateGameStats(
+      score,
+      totalClicks.current,
+      timePlayed
+    );
     setGameStats(finalStats);
     if (!user || !(user.id || user._id)) {
-      alert('You must be logged in to save your score!');
-      localStorage.setItem('leaderboardRefresh', Date.now().toString());
+      alert("You must be logged in to save your score!");
+      localStorage.setItem("leaderboardRefresh", Date.now().toString());
       return;
     }
     submitGameScore(score, finalStats, timePlayed).then(() => {
       if (setNeedsRefresh) setNeedsRefresh(true);
-      localStorage.setItem('leaderboardRefresh', Date.now().toString());
+      localStorage.setItem("leaderboardRefresh", Date.now().toString());
     });
-  }, [score, settings.gameDuration, timeLeft, calculateGameStats, user, setNeedsRefresh, submitGameScore, currentSessionId]);
+  }, [
+    score,
+    settings.gameDuration,
+    timeLeft,
+    calculateGameStats,
+    user,
+    setNeedsRefresh,
+    submitGameScore,
+    currentSessionId,
+  ]);
 
+  // FIXED: Pause game function with proper WebSocket commands
   const pauseGame = useCallback(async () => {
-    if (gameState === 'playing') {
-      // Disable motors when pausing
-      try {
-        console.log('Pausing game - disabling motors...');
-        const motorResponse = await disableMotors();
-        
-        if (motorResponse.ok) {
-          console.log('Motors disabled for pause:', motorResponse.data);
-        } else {
-          console.warn('Failed to disable motors on pause:', motorResponse.error);
-        }
-      } catch (error) {
-        console.error('Error disabling motors on pause:', error);
-      }
-      
-      clearInterval(timerIntervalRef.current);
-      clearInterval(targetMoveIntervalRef.current);
-      setGameState('paused');
-    } else if (gameState === 'paused') {
-      // Re-enable motors when resuming
-      try {
-        console.log('Resuming game - enabling motors...');
-        const motorResponse = await enableMotors(gameMode || 'easy');
-        
-        if (motorResponse.ok) {
-          console.log('Motors enabled for resume:', motorResponse.data);
-        } else {
-          console.warn('Failed to enable motors on resume:', motorResponse.error);
-        }
-      } catch (error) {
-        console.error('Error enabling motors on resume:', error);
-      }
-      
-      setGameState('playing');
-      timerIntervalRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(timerIntervalRef.current);
-            endGame();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, GAME_CONSTANTS.TIMER_INTERVAL);
-      targetMoveIntervalRef.current = setInterval(() => {
-        if (isMounted.current) generateTargets();
-      }, settings.targetSpeed);
+    console.log("=== pauseGame CALLED ===");
+    console.log("Current gameState:", gameState);
+    console.log("isPausing:", isPausing);
+    console.log("Timestamp:", new Date().toISOString());
+
+    // Prevent multiple rapid calls
+    if (isPausing) {
+      console.log("pauseGame already processing, ignoring call");
+      return;
     }
-  }, [gameState, settings.targetSpeed, generateTargets, gameMode, endGame]);
 
-  const handleGameAreaClick = useCallback((e) => {
-    if (gameState !== 'playing' || !gameAreaRef.current) return;
-    const rect = gameAreaRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    totalClicks.current += 1;
+    setIsPausing(true);
 
+    try {
+      if (gameState === "playing") {
+        console.log("Pausing game...");
+
+        // Send pause command to hardware
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({
+            type: "game_pause",
+            timestamp: Date.now()
+          }));
+          console.log("Sent game_pause command to hardware");
+        }
+
+        try {
+          console.log("Pausing game - Screen Handling...");
+          const pauseResponse = await pauseGameAPI();
+          if (pauseResponse.ok) {
+            console.log("Game Paused:", pauseResponse.data);
+          } else {
+            console.warn("Failed to pause game:", pauseResponse.error);
+          }
+        } catch (error) {
+          console.error("Error pausing game:", error);
+        }
+
+        // Disable motors when pausing
+        try {
+          console.log("Pausing game - disabling motors...");
+          const motorResponse = await disableMotors();
+          if (motorResponse.ok) {
+            console.log("Motors disabled for pause:", motorResponse.data);
+          } else {
+            console.warn(
+              "Failed to disable motors on pause:",
+              motorResponse.error
+            );
+          }
+        } catch (error) {
+          console.error("Error disabling motors on pause:", error);
+        }
+
+        clearInterval(timerIntervalRef.current);
+        clearInterval(targetMoveIntervalRef.current);
+        setGameState("paused");
+      } else if (gameState === "paused") {
+        console.log("Resuming game...");
+
+        // Send resume command to hardware
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({
+            type: "game_resume",
+            gameMode: gameMode || "easy",
+            timestamp: Date.now()
+          }));
+          console.log("Sent game_resume command to hardware");
+        }
+
+        // Re-enable motors when resuming
+        try {
+          console.log("Resuming game - enabling motors...");
+          const motorResponse = await enableMotors(gameMode || "easy");
+
+          if (motorResponse.ok) {
+            console.log("Motors enabled for resume:", motorResponse.data);
+          } else {
+            console.warn(
+              "Failed to enable motors on resume:",
+              motorResponse.error
+            );
+          }
+        } catch (error) {
+          console.error("Error enabling motors on resume:", error);
+        }
+
+        setGameState("playing");
+        timerIntervalRef.current = setInterval(() => {
+          setTimeLeft((prev) => {
+            if (prev <= 1) {
+              clearInterval(timerIntervalRef.current);
+              endGame();
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, GAME_CONSTANTS.TIMER_INTERVAL);
+
+        targetMoveIntervalRef.current = setInterval(() => {
+          if (isMounted.current) generateTargets();
+        }, settings.targetSpeed);
+      }
+    } catch (error) {
+      console.error("Error in pauseGame:", error);
+    } finally {
+      // Always reset the processing flag after a short delay
+      setTimeout(() => {
+        setIsPausing(false);
+      }, 500);
+    }
+  }, [
+    gameState,
+    settings.targetSpeed,
+    generateTargets,
+    gameMode,
+    endGame,
+    isPausing,
+  ]);
+
+  const handleGameAreaClick = useCallback(
+    (e) => {
+      if (gameState !== "playing" || !gameAreaRef.current) return;
+      const rect = gameAreaRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      totalClicks.current += 1;
+
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: "click",
+            position: { x, y },
+            timestamp: Date.now(),
+          })
+        );
+      }
+
+      let hit = false;
+      targets.forEach((target) => {
+        const dx = x - (target.left + target.size / 2);
+        const dy = y - (target.top + target.size / 2);
+        if (dx * dx + dy * dy <= (target.size / 2) ** 2) {
+          hit = true;
+          setHitPositions((prev) => [...prev, { x, y, id: Date.now() }]);
+          setScore((prev) => prev + 1);
+        }
+      });
+
+      if (!hit) {
+        setMissPositions((prev) => [...prev, { x, y, id: Date.now() }]);
+      }
+
+      if (hit) {
+        setTimeout(() => {
+          if (isMounted.current) generateTargets();
+        }, GAME_CONSTANTS.TARGET_SPAWN_DELAY);
+      }
+    },
+    [gameState, targets, generateTargets]
+  );
+
+  const playAgain = useCallback(async () => {
+    setShowFinal(true);
+    setFinalPageStart(false);
+    setGameState("ready");
+    
+    // Send reset command to hardware
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
-        type: 'click',
-        position: { x, y },
+        type: "game_reset",
         timestamp: Date.now()
       }));
+      console.log("Sent game_reset command to hardware");
     }
 
-    let hit = false;
-    targets.forEach(target => {
-      const dx = x - (target.left + target.size / 2);
-      const dy = y - (target.top + target.size / 2);
-      if (dx * dx + dy * dy <= (target.size / 2) ** 2) {
-        hit = true;
-        setHitPositions(prev => [...prev, { x, y, id: Date.now() }]);
-        setScore(prev => prev + 1);
+    try {
+      console.log("Play Again - Screen Handling...");
+      const playAgainResponse = await playAgainAPI();
+      if (playAgainResponse.ok) {
+        console.log("Game Play Again:", playAgainResponse.data);
+      } else {
+        console.warn("Failed to Play Again game:", playAgainResponse.error);
       }
-    });
+    } catch (error) {
+      console.error("Error in play again:", error);
+    }
+  }, []);
 
-    if (!hit) {
-      setMissPositions(prev => [...prev, { x, y, id: Date.now() }]);
+  // FIXED: Properly declared handleStart function
+  const handleStart = useCallback(async () => {
+    setShowFinal(false);
+    setFinalPageStart(true);
+    // Start the countdown after a brief delay
+    setTimeout(() => {
+      startGameWithCountdown();
+    }, 100);
+
+    try {
+      console.log("Play Again - Screen Handling...");
+      const playAgainResponse = await startGame();
+      if (playAgainResponse.ok) {
+        console.log("Game Play Again:", playAgainResponse.data);
+      } else {
+        console.warn("Failed to Play Again game:", playAgainResponse.error);
+      }
+    } catch (error) {
+      console.error("Error in play again:", error);
     }
 
-    if (hit) {
-      setTimeout(() => {
-        if (isMounted.current) generateTargets();
-      }, GAME_CONSTANTS.TARGET_SPAWN_DELAY);
-    }
-  }, [gameState, targets, generateTargets]);
+  }, [startGameWithCountdown]);
 
-  const FinalPage = React.useMemo(() => React.lazy(() => import('./FinalPage')), []);
+  const FinalPage = React.useMemo(
+    () => React.lazy(() => import("./FinalPage")),
+    []
+  );
+
+  // FIXED: Clean up hit and miss position arrays periodically
+  useEffect(() => {
+    const cleanup = setInterval(() => {
+      const now = Date.now();
+      setHitPositions(prev => prev.filter(hit => now - hit.id < 2000)); // Remove after 2 seconds
+      setMissPositions(prev => prev.filter(miss => now - miss.id < 2000)); // Remove after 2 seconds
+    }, 1000);
+
+    return () => clearInterval(cleanup);
+  }, []);
 
   // Main render block
   return (
     <>
       {showFinal && !finalPageStart ? (
-        <React.Suspense fallback={<div className="game-loading-fallback">Loading game page...</div>}>
-          <FinalPage
-            onStart={() => {
-              setShowFinal(false);
-              setFinalPageStart(true);
-              setTimeout(() => {
-                startGameWithCountdown();
-              }, 0);
-            }}
-            score={score}
-            timeLeft={timeLeft}
-          />
+        <React.Suspense
+          fallback={
+            <div className="game-loading-fallback">Loading game page...</div>
+          }
+        >
+          <FinalPage onStart={handleStart} score={score} timeLeft={timeLeft} />
         </React.Suspense>
       ) : countdown !== null ? (
         <div className="countdown-overlay">
@@ -556,18 +861,25 @@ const PlayPage = () => {
             <h1 className="countdown-number">{countdown}</h1>
           </div>
         </div>
-      ) : gameState === 'playing' ? (
+      ) : gameState === "playing" ? (
         <div className="game-container">
           <div className="game-header">
-            <GameInfoPanel 
-              score={score} 
-              gameMode={gameMode} 
-              timeLeft={timeLeft} 
+            <GameInfoPanel
+              score={score}
+              gameMode={gameMode}
+              timeLeft={timeLeft}
             />
             <div className="game-controls">
-              <button className="control-btn pause-btn" onClick={pauseGame}>
-                <span className="btn-icon">⏸</span>
-                <span className="btn-text">Pause</span>
+              <button
+                className="control-btn pause-btn"
+                onClick={pauseGame}
+                disabled={isPausing}
+                style={{ opacity: isPausing ? 0.7 : 1 }}
+              >
+                <span className="btn-icon">{isPausing ? "⏳" : "⏸"}</span>
+                <span className="btn-text">
+                  {isPausing ? "Pausing..." : "Pause"}
+                </span>
               </button>
               <button className="control-btn quit-btn" onClick={endGame}>
                 <span className="btn-icon">✕</span>
@@ -575,45 +887,64 @@ const PlayPage = () => {
               </button>
             </div>
           </div>
-          
-          <div className="game-area" ref={gameAreaRef} onClick={handleGameAreaClick}>
+
+          <div
+            className="game-area"
+            ref={gameAreaRef}
+            onClick={handleGameAreaClick}
+          >
             <div className="game-area-overlay">
               <div className="crosshair"></div>
             </div>
-            {targets.map(target => (
+            {targets.map((target) => (
               <Target
                 key={target.id}
                 color={target.color}
                 style={{
-                  position: 'absolute',
+                  position: "absolute",
                   left: target.left,
                   top: target.top,
                   width: target.size,
-                  height: target.size
+                  height: target.size,
                 }}
               />
             ))}
-            {hitPositions.map(hit => (
-              <div key={hit.id} className="hit-indicator" style={{ left: hit.x, top: hit.y }}>
+            {hitPositions.map((hit) => (
+              <div
+                key={hit.id}
+                className="hit-indicator"
+                style={{ left: hit.x, top: hit.y }}
+              >
                 <div className="hit-ripple"></div>
               </div>
             ))}
-            {missPositions.map(miss => (
-              <div key={miss.id} className="miss-indicator" style={{ left: miss.x, top: miss.y }}>
+            {missPositions.map((miss) => (
+              <div
+                key={miss.id}
+                className="miss-indicator"
+                style={{ left: miss.x, top: miss.y }}
+              >
                 <div className="miss-cross"></div>
               </div>
             ))}
           </div>
         </div>
-      ) : gameState === 'paused' ? (
+      ) : gameState === "paused" ? (
         <div className="game-container">
           <div className="pause-overlay">
             <div className="pause-content">
               <h2 className="pause-title">Game Paused</h2>
               <div className="pause-buttons">
-                <button className="pause-action-btn resume-btn" onClick={pauseGame}>
-                  <span className="btn-icon">▶</span>
-                  <span className="btn-text">Resume</span>
+                <button
+                  className="pause-action-btn resume-btn"
+                  onClick={pauseGame}
+                  disabled={isPausing}
+                  style={{ opacity: isPausing ? 0.7 : 1 }}
+                >
+                  <span className="btn-icon">{isPausing ? "⏳" : "▶"}</span>
+                  <span className="btn-text">
+                    {isPausing ? "Resuming..." : "Resume"}
+                  </span>
                 </button>
                 <button className="pause-action-btn quit-btn" onClick={endGame}>
                   <span className="btn-icon">✕</span>
@@ -623,26 +954,28 @@ const PlayPage = () => {
             </div>
           </div>
         </div>
-      ) : gameState === 'finished' ? (
+      ) : gameState === "finished" ? (
         <div className="game-container">
           <div className="game-over-overlay">
             <div className="game-over-content">
               <div className="final-score-display">
                 <h1 className="final-score-text">Final Score: {score}</h1>
               </div>
-              
+
               <div className="game-over-header">
                 <h2 className="game-over-title">Game Over!</h2>
               </div>
-              
+
               <div className="game-results">
                 <div className="result-item">
                   <span className="result-label">Player:</span>
-                  <span className="result-value">{user?.username || 'Guest'}</span>
+                  <span className="result-value">
+                    {user?.username || "Guest"}
+                  </span>
                 </div>
                 <div className="result-item">
                   <span className="result-label">Game Mode:</span>
-                  <span className="result-value">{gameMode || 'easy'}</span>
+                  <span className="result-value">{gameMode || "easy"}</span>
                 </div>
                 <div className="result-item">
                   <span className="result-label">Score:</span>
@@ -650,26 +983,23 @@ const PlayPage = () => {
                 </div>
                 <div className="result-item">
                   <span className="result-label">Accuracy:</span>
-                  <span className="result-value">{gameStats.accuracy.toFixed(1)}%</span>
+                  <span className="result-value">
+                    {gameStats.accuracy.toFixed(1)}%
+                  </span>
                 </div>
                 <div className="result-item">
                   <span className="result-label">Hits per Second:</span>
-                  <span className="result-value">{gameStats.hitsPerSecond.toFixed(2)}</span>
+                  <span className="result-value">
+                    {gameStats.hitsPerSecond.toFixed(2)}
+                  </span>
                 </div>
                 <div className="result-item">
                   <span className="result-label">Total Hits:</span>
                   <span className="result-value">{gameStats.totalHits}</span>
                 </div>
               </div>
-              
-              <button
-                className="play-again-btn"
-                onClick={() => {
-                  setShowFinal(true);
-                  setFinalPageStart(false);
-                  setGameState('ready');
-                }}
-              >
+
+              <button className="play-again-btn" onClick={playAgain}>
                 <span className="btn-icon">🔄</span>
                 <span className="btn-text">Play Again</span>
               </button>
@@ -679,8 +1009,6 @@ const PlayPage = () => {
       ) : null}
     </>
   );
-}
-
-
+};
 
 export default PlayPage;
