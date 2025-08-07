@@ -295,23 +295,23 @@ const PlayPage = () => {
 
 
   // Countdown then start game
-  const startGameWithCountdown = useCallback(() => {
-    let count = 5;
-    setCountdown(count);
-    const countdownInterval = setInterval(() => {
-      if (count > 1) {
-        count--;
-        setCountdown(count);
-      } else {
-        clearInterval(countdownInterval);
-        setCountdown('GO!');
-        setTimeout(() => {
-          setCountdown(null);
-          actuallyStartGame();
-        }, 1000);
-      }
-    }, 1000);
-  }, []);
+ const startGameWithCountdown = useCallback(() => {
+  let count = 5;
+  setCountdown(count);
+  const countdownInterval = setInterval(() => {
+    if (count > 1) {
+      count--;
+      setCountdown(count);
+    } else {
+      clearInterval(countdownInterval);
+      setCountdown('FIRE'); // Display "FIRE"
+      setTimeout(() => {
+        setCountdown(null); // Clear the countdown
+        actuallyStartGame(); // Start the game immediately after 4 seconds of blinking
+      }, 4000); // Keep "FIRE" blinking for 4 seconds
+    }
+  }, 1000);
+}, []);
 
   // The real game start logic (after countdown)
   const actuallyStartGame = useCallback(async () => {
