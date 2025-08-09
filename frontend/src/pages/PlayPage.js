@@ -101,6 +101,7 @@ const PlayPage = () => {
     hitsPerSecond: 0,
     totalClicks: 0,
     totalHits: 0,
+    totalShots: 0,
   });
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [showFinal, setShowFinal] = useState(true);
@@ -111,6 +112,9 @@ const PlayPage = () => {
   const targetMoveIntervalRef = useRef(null);
   const countdownAudioRef = useRef(null);
   const totalClicks = useRef(0);
+  const totalHardwareHits = useRef(0);  // Track hardware hits
+  const totalShots = useRef(0);  // Track total shots (clicks + hardware hits)
+  const totalActualHits = useRef(0);  // Track actual hits (successful hits only)
   const isMounted = useRef(true);
   const gameStartTime = useRef(null);
   const wsRef = useRef(null);
@@ -188,9 +192,16 @@ const PlayPage = () => {
             data.sessionId === currentSessionId
           ) {
             setScore(data.currentScore);
+            totalHardwareHits.current += 1;  // Track hardware hits
+            totalShots.current += 1;  // Track total shots
+            totalActualHits.current += 1;  // Track actual hits
             console.log(
               "✅ Session hit registered - Score updated to:",
-              data.currentScore
+              data.currentScore,
+              "Total shots:",
+              totalShots.current,
+              "Total hits:",
+              totalActualHits.current
             );
 
             // Add visual hit indicator for session hits
@@ -213,9 +224,16 @@ const PlayPage = () => {
             !currentSessionId
           ) {
             setScore(data.currentScore);
+            totalHardwareHits.current += 1;  // Track hardware hits
+            totalShots.current += 1;  // Track total shots
+            totalActualHits.current += 1;  // Track actual hits
             console.log(
               "📊 Session hit received (no local session) - Score updated to:",
-              data.currentScore
+              data.currentScore,
+              "Total shots:",
+              totalShots.current,
+              "Total hits:",
+              totalActualHits.current
             );
 
             // Add visual hit indicator
@@ -243,24 +261,33 @@ const PlayPage = () => {
               points = 2;
             }
             if (points > 0) {
+              totalHardwareHits.current += 1;  // Track hardware hits
+              totalShots.current += 1;  // Track total shots
+              totalActualHits.current += 1;  // Track actual hits
               setScore((prev) => {
                 const newScore = prev + points;
-                console.log(`HIT! ${points} score ${data.value}`);
+                console.log(`HIT! ${points} score ${data.value}, Total shots:`, totalShots.current, "Total hits:", totalActualHits.current);
                 return newScore;
               });
             } else if (
               data.scoreIncrement &&
               typeof data.scoreIncrement === "number"
             ) {
+              totalHardwareHits.current += 1;  // Track hardware hits
+              totalShots.current += 1;  // Track total shots
+              totalActualHits.current += 1;  // Track actual hits
               setScore((prev) => {
                 const newScore = prev + data.scoreIncrement;
-                console.log("Score incremented by hardware hit:", newScore);
+                console.log("Score incremented by hardware hit:", newScore, "Total shots:", totalShots.current, "Total hits:", totalActualHits.current);
                 return newScore;
               });
             } else if (data.value === "HIT") {
+              totalHardwareHits.current += 1;  // Track hardware hits
+              totalShots.current += 1;  // Track total shots
+              totalActualHits.current += 1;  // Track actual hits
               setScore((prev) => {
                 const newScore = prev + 1;
-                console.log("Hardware hit detected, score:", newScore);
+                console.log("Hardware hit detected, score:", newScore, "Total shots:", totalShots.current, "Total hits:", totalActualHits.current);
                 return newScore;
               });
             }
@@ -396,25 +423,6 @@ const PlayPage = () => {
   }, 1000);
 }, []);
 
-  // FIXED: Properly declared startGameWithCountdown function
-  const startGameWithCountdown = useCallback(() => {
-    let count = 5;
-    setCountdown(count);
-    const countdownInterval = setInterval(() => {
-      if (count > 1) {
-        count--;
-        setCountdown(count);
-      } else {
-        clearInterval(countdownInterval);
-        setCountdown("GO!");
-        setTimeout(() => {
-          setCountdown(null);
-          actuallyStartGame();
-        }, 1000);
-      }
-    }, 1000);
-  }, []);
-
 
   // FIXED: Added actuallyStartGame to dependencies
   const actuallyStartGame = useCallback(async () => {
@@ -464,6 +472,9 @@ const PlayPage = () => {
     setScore(0);
     setTimeLeft(settings.gameDuration);
     totalClicks.current = 0;
+    totalHardwareHits.current = 0;  // Reset hardware hits counter
+    totalShots.current = 0;  // Reset total shots counter
+    totalActualHits.current = 0;  // Reset actual hits counter
     setHitPositions([]);
     setMissPositions([]);
     gameStartTime.current = Date.now();
@@ -495,19 +506,37 @@ const PlayPage = () => {
   }, [settings, generateTargets, gameMode, setupWebSocket, user]);
 
   const calculateGameStats = useCallback(
-    (finalScore, totalClicksCount, gameDuration) => {
-      const accuracy =
-        totalClicksCount > 0 ? (finalScore / totalClicksCount) * 100 : 0;
-      const timeElapsed = gameDuration - timeLeft;
-      const hitsPerSecond = timeElapsed > 0 ? finalScore / timeElapsed : 0;
+    (finalScore, totalClicksCount, timePlayed) => {
+      // Calculate total shots: frontend clicks + hardware hits
+      const totalShotsCount = totalClicksCount + totalHardwareHits.current;
+      
+      // Calculate accuracy: (total actual hits / total shots) * 100
+      // Total actual hits = totalActualHits.current, Total shots = frontend clicks + hardware hits
+      const accuracy = totalShotsCount > 0 ? (totalActualHits.current / totalShotsCount) * 100 : 0;
+      
+      // Calculate hits per second using actual hits and time played
+      const hitsPerSecond = timePlayed > 0 ? totalActualHits.current / timePlayed : 0;
+      
+      console.log("📊 Game Stats Calculation:");
+      console.log("  Final Score:", finalScore);
+      console.log("  Frontend Clicks:", totalClicksCount);
+      console.log("  Hardware Hits:", totalHardwareHits.current);
+      console.log("  Total Shots:", totalShotsCount);
+      console.log("  Total Actual Hits:", totalActualHits.current);
+      console.log("  Time Played:", timePlayed, "seconds");
+      console.log("  Accuracy:", accuracy.toFixed(2) + "%");
+      console.log("  Hits per Second:", hitsPerSecond.toFixed(2));
+      
       return {
         accuracy,
         hitsPerSecond,
         totalClicks: totalClicksCount,
-        totalHits: finalScore,
+        totalHits: totalActualHits.current,  // Use actual hit count instead of score
+        totalShots: totalShotsCount,
+        hardwareHits: totalHardwareHits.current,
       };
     },
-    [timeLeft]
+    [] // Remove timeLeft dependency since we're passing timePlayed directly
   );
 
   const submitGameScore = useCallback(
@@ -586,8 +615,20 @@ const PlayPage = () => {
     clearInterval(targetMoveIntervalRef.current);
     closeWebSocket();
     setGameState("finished");
-    // Calculate actual time played if quitting early
-    const timePlayed = settings.gameDuration - timeLeft;
+    
+    // Calculate actual time played using game start time
+    const gameEndTime = Date.now();
+    const timePlayed = gameStartTime.current ? (gameEndTime - gameStartTime.current) / 1000 : settings.gameDuration - timeLeft;
+    
+    console.log("🎯 Game End Calculation:");
+    console.log("  Game Start Time:", gameStartTime.current ? new Date(gameStartTime.current).toISOString() : "Not set");
+    console.log("  Game End Time:", new Date(gameEndTime).toISOString());
+    console.log("  Calculated Time Played:", timePlayed, "seconds");
+    console.log("  Final Score:", score);
+    console.log("  Total Clicks:", totalClicks.current);
+    console.log("  Total Hardware Hits:", totalHardwareHits.current);
+    console.log("  Total Actual Hits:", totalActualHits.current);
+    
     const finalStats = calculateGameStats(
       score,
       totalClicks.current,
@@ -742,7 +783,10 @@ const PlayPage = () => {
       const rect = gameAreaRef.current.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
+      
+      // Track frontend clicks
       totalClicks.current += 1;
+      totalShots.current += 1;  // Add to total shots count
 
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
         wsRef.current.send(
@@ -760,6 +804,7 @@ const PlayPage = () => {
         const dy = y - (target.top + target.size / 2);
         if (dx * dx + dy * dy <= (target.size / 2) ** 2) {
           hit = true;
+          totalActualHits.current += 1;  // Track actual hits from frontend clicks
           setHitPositions((prev) => [...prev, { x, y, id: Date.now() }]);
           setScore((prev) => prev + 1);
         }

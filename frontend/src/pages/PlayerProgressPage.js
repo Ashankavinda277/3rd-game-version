@@ -173,7 +173,6 @@ const PlayerProgressPage = () => {
               {/* Sensor Data Section */}
               {isConnected && (
                 <div className="player-progress-sensor-section">
-                  <h3 className="player-progress-section-title">ESP8266 Sensor Data</h3>
                   <div className="player-progress-sensor-data">
                     <p className={`player-progress-sensor-status ${isConnected ? 'connected' : 'disconnected'}`}>
                       Status: {isConnected ? 'Connected' : 'Disconnected'}

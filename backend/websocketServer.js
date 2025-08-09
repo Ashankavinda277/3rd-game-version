@@ -138,7 +138,7 @@ ws.on("message", async (message) => {
                   {
                     points: hitData.scoreIncrement,
                     targetId: hitData.targetId,
-                    accuracy: messageStr === "MISS" ? 0 : 100,
+                    isHit: messageStr !== "MISS",
                     zone: messageStr === "MISS" ? "miss" : "center",
                   }
                 );
@@ -149,7 +149,8 @@ ws.on("message", async (message) => {
                   sessionId: activeSession.sessionId,
                   currentScore: result.currentScore,
                   hitCount: result.hitCount,
-                  accuracy: result.accuracy,
+                  totalShots: result.totalShots,
+                  accuracy: result.totalShots > 0 ? (result.hitCount / result.totalShots) * 100 : 0,
                   type: messageStr === "MISS" ? "miss_registered" : "hit_registered",
                 };
 
@@ -543,7 +544,6 @@ ws.on("message", async (message) => {
               targetId: data.targetId || 0,
               timestamp: Date.now(),
               scoreIncrement: scoreIncrement,
-              accuracy: scoreIncrement > 0 ? (data.accuracy || 100) : 0,
               hitValue: data.value,
               zone: scoreIncrement > 0 ? (data.zone || "center") : "miss",
             };

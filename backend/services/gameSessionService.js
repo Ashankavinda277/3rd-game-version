@@ -62,23 +62,34 @@ class GameSessionService {
 
       // Use scoreIncrement if provided, fallback to points
       const points = typeof hitData.scoreIncrement === 'number' ? hitData.scoreIncrement : hitData.points;
-      const hitDetails = {
-        ...hitData,
-        points
-      };
-      await session.addHit(hitDetails);
+      
+      if (hitData.isHit === false || points === 0) {
+        // This is a miss
+        await session.addMiss();
+        console.log(`Miss registered for session ${sessionId}`);
+      } else {
+        // This is a hit
+        const hitDetails = {
+          ...hitData,
+          points
+        };
+        await session.addHit(hitDetails);
+        console.log(`Hit registered for session ${sessionId}: ${points} points`);
+      }
 
-      console.log(`Hit registered for session ${sessionId}: ${points} points`);
+      const totalShots = session.hitCount + session.missCount;
 
       return {
         sessionId,
         currentScore: session.currentScore,
         hitCount: session.hitCount,
+        missCount: session.missCount,
+        totalShots: totalShots,
         accuracy: session.accuracy,
-        hit: hitDetails
+        hit: hitData.isHit !== false ? hitData : null
       };
     } catch (error) {
-      console.error('Error registering hit:', error);
+      console.error('Error registering hit/miss:', error);
       throw error;
     }
   }
@@ -145,12 +156,15 @@ class GameSessionService {
       
       console.log(`Game session ended: ${sessionId}, Final score: ${session.currentScore}`);
       
+      const totalShots = session.hitCount + session.missCount;
+      
       return {
         sessionId,
         playerName: session.playerName,
         finalScore: session.currentScore,
         hitCount: session.hitCount,
         missCount: session.missCount,
+        totalShots: totalShots,
         accuracy: session.accuracy,
         duration: gameDuration,
         savedScore: finalScore
@@ -170,6 +184,8 @@ class GameSessionService {
         throw new Error('Session not found');
       }
       
+      const totalShots = session.hitCount + session.missCount;
+      
       return {
         sessionId,
         playerName: session.playerName,
@@ -177,6 +193,7 @@ class GameSessionService {
         currentScore: session.currentScore,
         hitCount: session.hitCount,
         missCount: session.missCount,
+        totalShots: totalShots,
         accuracy: session.accuracy,
         isActive: session.isActive,
         startTime: session.startTime,
