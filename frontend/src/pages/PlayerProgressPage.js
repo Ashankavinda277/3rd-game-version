@@ -54,15 +54,22 @@ const PlayerProgressPage = () => {
           
           // Map and sort all games by date descending
           const allGames = scores
-            .map(s => ({
-              id: s._id,
-              score: Number(s.score) || 0,
-              mode: s.gameMode || 'Unknown',
-              accuracy: Number(s.accuracy) || 0,
-              duration: Number(s.timePlayed) || 0,
-              date: s.createdAt
-            }))
+            .map(s => {
+              const game = {
+                id: s._id,
+                score: Number(s.score) || 0,
+                mode: s.gameMode || 'Unknown',
+                accuracy: Number(s.accuracy) || 0,
+                duration: Number(s.timePlayed) || 0,
+                date: s.createdAt
+              };
+              console.log(`🎮 Processing game: ID=${game.id}, Score=${game.score}, Mode=${game.mode}`);
+              return game;
+            })
             .sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+          console.log(`🎯 Total processed games: ${allGames.length}`);
+          console.log('🎯 All games data:', allGames);
           const newestGames = allGames.slice(0, 10);
           const totalGames = allGames.length; // All games, not just newest 10
           const highestScore = allGames.length > 0 ? allGames.reduce((max, g) => Math.max(max, g.score), 0) : 0;

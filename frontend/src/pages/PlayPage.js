@@ -59,6 +59,11 @@ const GameInfoPanel = ({ score, gameMode, timeLeft }) => {
   const isRed = timeLeft <= GAME_CONSTANTS.RED_TIME_THRESHOLD;
   const shouldBlink = timeLeft <= GAME_CONSTANTS.BLINK_TIME_THRESHOLD;
 
+  // Debug log to track what timeLeft value is received
+  React.useEffect(() => {
+    console.log(`📱 GameInfoPanel: Displaying timeLeft = ${timeLeft}s for mode = ${gameMode}`);
+  }, [timeLeft, gameMode]);
+
   return (
     <div className="game-info-panel">
       <div className="info-card score-card">
@@ -89,6 +94,9 @@ const PlayPage = () => {
   const [gameState, setGameState] = useState("ready");
   const [countdown, setCountdown] = useState(null); // null or number or 'GO!'
   const [score, setScore] = useState(0);
+  
+  // Add a ref to track the current score for timer-based endGame calls
+  const currentScore = useRef(0);
   const [timeLeft, setTimeLeft] = useState(0);
   const [targets, setTargets] = useState([]);
   const [hitPositions, setHitPositions] = useState([]);
@@ -106,6 +114,9 @@ const PlayPage = () => {
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [showFinal, setShowFinal] = useState(true);
   const [finalPageStart, setFinalPageStart] = useState(false);
+  
+  // Add a message counter for debugging
+  const messageCount = useRef(0);
 
   const gameAreaRef = useRef(null);
   const timerIntervalRef = useRef(null);
@@ -129,9 +140,17 @@ const PlayPage = () => {
   useEffect(() => {
     const mode = gameMode || "easy";
     const newSettings = DIFFICULTY_SETTINGS[mode] || DIFFICULTY_SETTINGS.easy;
+    console.log(`🎯 Game mode: ${mode}, Duration: ${newSettings.gameDuration} seconds`);
     setSettings(newSettings);
     setTimeLeft(newSettings.gameDuration);
+    console.log(`⏰ Setting timeLeft to: ${newSettings.gameDuration} seconds`);
   }, [gameMode]);
+
+  // Keep the score ref in sync with score state
+  useEffect(() => {
+    currentScore.current = score;
+    console.log(`💰 Score updated: ${score}`);
+  }, [score]);
 
   useEffect(() => {
     return () => {
@@ -166,6 +185,7 @@ const PlayPage = () => {
       wsRef.current = new WebSocket(wsUrl);
 
       wsRef.current.onopen = () => {
+        console.log("🔗 WebSocket connection opened successfully");
         const handshakeMessage = {
           type: "identify",
           clientType: "web",
@@ -176,21 +196,36 @@ const PlayPage = () => {
         wsRef.current.sessionId = currentSessionId;
         wsRef.current.send(JSON.stringify(handshakeMessage));
         console.log(
-          "WebSocket connected and session registered:",
+          "🤝 WebSocket connected and session registered:",
           currentSessionId
         );
+        console.log("📤 Sent handshake message:", handshakeMessage);
+        
+        // Test WebSocket by sending a test message after a short delay
+        setTimeout(() => {
+          if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({
+              type: "test_message",
+              message: "Frontend WebSocket test",
+              timestamp: Date.now()
+            }));
+            console.log("📤 Sent test message to verify WebSocket");
+          }
+        }, 1000);
       };
 
       wsRef.current.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log("WebSocket message received:", data);
+          messageCount.current += 1;
+          console.log(`🔌 WebSocket message #${messageCount.current} received:`, data);
 
           // Priority 1: Handle session-aware hardware hit detection
           if (
             data.type === "hit_registered" &&
             data.sessionId === currentSessionId
           ) {
+            console.log("🎯 Session hit - updating score from", score, "to", data.currentScore);
             setScore(data.currentScore);
             totalHardwareHits.current += 1;  // Track hardware hits
             totalShots.current += 1;  // Track total shots
@@ -266,19 +301,20 @@ const PlayPage = () => {
               totalActualHits.current += 1;  // Track actual hits
               setScore((prev) => {
                 const newScore = prev + points;
-                console.log(`HIT! ${points} score ${data.value}, Total shots:`, totalShots.current, "Total hits:", totalActualHits.current);
+                console.log(`🚀 HIT! ${points} points for ${data.value}. Score: ${prev} → ${newScore}, Total shots:`, totalShots.current, "Total hits:", totalActualHits.current);
                 return newScore;
               });
             } else if (
               data.scoreIncrement &&
               typeof data.scoreIncrement === "number"
             ) {
+              console.log("💥 Processing scoreIncrement hit:", data.scoreIncrement);
               totalHardwareHits.current += 1;  // Track hardware hits
               totalShots.current += 1;  // Track total shots
               totalActualHits.current += 1;  // Track actual hits
               setScore((prev) => {
                 const newScore = prev + data.scoreIncrement;
-                console.log("Score incremented by hardware hit:", newScore, "Total shots:", totalShots.current, "Total hits:", totalActualHits.current);
+                console.log(`🚀 SCORE INCREMENT! ${data.scoreIncrement} points. Score: ${prev} → ${newScore}, Total shots:`, totalShots.current, "Total hits:", totalActualHits.current);
                 return newScore;
               });
             } else if (data.value === "HIT") {
@@ -308,6 +344,10 @@ const PlayPage = () => {
           if (data.type === "target_miss" || data.type === "miss_registered") {
             console.log("❌ Processing hardware miss:", data);
             
+            // Count hardware misses as shots for accuracy calculation
+            totalShots.current += 1;  // Track total shots (including misses)
+            console.log("📊 Hardware miss counted - Total shots:", totalShots.current, "Total hits:", totalActualHits.current);
+            
             // Add visual miss indicator
             const rect = gameAreaRef.current?.getBoundingClientRect();
             if (rect) {
@@ -318,6 +358,13 @@ const PlayPage = () => {
                 { x: centerX, y: centerY, id: Date.now() },
               ]);
             }
+          }
+
+          // Handle shot detection from hardware (for tracking accuracy)
+          if (data.type === "shot_from_glove") {
+            console.log("🔫 Shot detected from hardware:", data);
+            // This is just a shot detection, the hit/miss will come in separate messages
+            // Don't count it here to avoid double counting
           }
 
           // Handle count updates
@@ -470,7 +517,8 @@ const PlayPage = () => {
 
     setGameState("playing");
     setScore(0);
-    setTimeLeft(settings.gameDuration);
+    console.log("🎮 Game started - Score reset to 0");
+    // timeLeft is already set correctly by the useEffect when gameMode changes
     totalClicks.current = 0;
     totalHardwareHits.current = 0;  // Reset hardware hits counter
     totalShots.current = 0;  // Reset total shots counter
@@ -485,7 +533,11 @@ const PlayPage = () => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timerIntervalRef.current);
-          endGame();
+          // Use a timeout to ensure all state updates are complete
+          setTimeout(() => {
+            console.log(`⏰ Timer ended - calling endGame with score: ${currentScore.current}`);
+            endGame();
+          }, 100);
           return 0;
         }
 
@@ -507,11 +559,11 @@ const PlayPage = () => {
 
   const calculateGameStats = useCallback(
     (finalScore, totalClicksCount, timePlayed) => {
-      // Calculate total shots: frontend clicks + hardware hits
-      const totalShotsCount = totalClicksCount + totalHardwareHits.current;
+      // Use the actual total shots counter which includes hits and misses
+      const totalShotsCount = totalShots.current;
       
       // Calculate accuracy: (total actual hits / total shots) * 100
-      // Total actual hits = totalActualHits.current, Total shots = frontend clicks + hardware hits
+      // Total actual hits = totalActualHits.current, Total shots = totalShots.current (includes all attempts)
       const accuracy = totalShotsCount > 0 ? (totalActualHits.current / totalShotsCount) * 100 : 0;
       
       // Calculate hits per second using actual hits and time played
@@ -521,7 +573,7 @@ const PlayPage = () => {
       console.log("  Final Score:", finalScore);
       console.log("  Frontend Clicks:", totalClicksCount);
       console.log("  Hardware Hits:", totalHardwareHits.current);
-      console.log("  Total Shots:", totalShotsCount);
+      console.log("  Total Shots (from counter):", totalShotsCount);
       console.log("  Total Actual Hits:", totalActualHits.current);
       console.log("  Time Played:", timePlayed, "seconds");
       console.log("  Accuracy:", accuracy.toFixed(2) + "%");
@@ -548,7 +600,8 @@ const PlayPage = () => {
         const userId =
           user && (user.id || user._id) ? user.id || user._id : null;
         const username = user && user.username ? user.username : "Guest";
-        const response = await submitScore({
+        
+        const scoreData = {
           user: userId,
           username: username,
           score: finalScore,
@@ -558,8 +611,16 @@ const PlayPage = () => {
             typeof timePlayedOverride === "number"
               ? timePlayedOverride
               : settings.gameDuration,
-        });
-        if (!response.ok) console.error("Submit failed:", response.error);
+        };
+        
+        console.log("🚀 Submitting score data:", scoreData);
+        const response = await submitScore(scoreData);
+        
+        if (response.ok) {
+          console.log("✅ Score submitted successfully:", response.data);
+        } else {
+          console.error("❌ Submit failed:", response.error);
+        }
       } catch (err) {
         console.error("Submit error:", err);
       } finally {
@@ -624,13 +685,16 @@ const PlayPage = () => {
     console.log("  Game Start Time:", gameStartTime.current ? new Date(gameStartTime.current).toISOString() : "Not set");
     console.log("  Game End Time:", new Date(gameEndTime).toISOString());
     console.log("  Calculated Time Played:", timePlayed, "seconds");
-    console.log("  Final Score:", score);
+    console.log("  Final Score (from state):", score);
+    console.log("  Final Score (from ref):", currentScore.current);
+    console.log("  Using score:", currentScore.current);
     console.log("  Total Clicks:", totalClicks.current);
     console.log("  Total Hardware Hits:", totalHardwareHits.current);
     console.log("  Total Actual Hits:", totalActualHits.current);
     
+    const finalScore = currentScore.current; // Use the ref value instead of state
     const finalStats = calculateGameStats(
-      score,
+      finalScore,
       totalClicks.current,
       timePlayed
     );
@@ -640,7 +704,7 @@ const PlayPage = () => {
       localStorage.setItem("leaderboardRefresh", Date.now().toString());
       return;
     }
-    submitGameScore(score, finalStats, timePlayed).then(() => {
+    submitGameScore(finalScore, finalStats, timePlayed).then(() => {
       if (setNeedsRefresh) setNeedsRefresh(true);
       localStorage.setItem("leaderboardRefresh", Date.now().toString());
     });

@@ -23,10 +23,16 @@ export const GameProvider = ({ children }) => {
   React.useEffect(() => {
     try {
       const storedUser = localStorage.getItem('user');
-      setUserState(storedUser && storedUser !== 'undefined' ? JSON.parse(storedUser) : null);
+      const parsedUser = storedUser && storedUser !== 'undefined' ? JSON.parse(storedUser) : null;
+      console.log('🏁 GameContext: Loaded user from localStorage:', parsedUser);
+      setUserState(parsedUser);
+      
       const storedMode = localStorage.getItem('gameMode');
-      setGameModeState(storedMode && storedMode !== 'undefined' ? JSON.parse(storedMode) : null);
-    } catch {
+      const parsedMode = storedMode && storedMode !== 'undefined' ? JSON.parse(storedMode) : null;
+      console.log('🏁 GameContext: Loaded gameMode from localStorage:', parsedMode);
+      setGameModeState(parsedMode);
+    } catch (error) {
+      console.error('Error loading from localStorage:', error);
       setUserState(null);
       setGameModeState(null);
     } finally {
@@ -45,11 +51,14 @@ export const GameProvider = ({ children }) => {
   };
 
   const setGameMode = (mode) => {
+    console.log(`🔄 GameContext: Setting gameMode to: ${mode}`);
     setGameModeState(mode);
     if (mode) {
       localStorage.setItem('gameMode', JSON.stringify(mode));
+      console.log(`💾 GameContext: Saved gameMode to localStorage: ${mode}`);
     } else {
       localStorage.removeItem('gameMode');
+      console.log(`🗑️ GameContext: Removed gameMode from localStorage`);
     }
   };
 

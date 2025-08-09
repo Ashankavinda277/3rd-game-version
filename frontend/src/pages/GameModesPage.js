@@ -12,9 +12,11 @@ const GameModesPage = () => {
   const { setGameMode } = useGameContext();
 
   const handleModeSelect = async (mode) => {
+    console.log(`🎮 Mode selected: ${mode}`);
     setGameMode(mode);
     try {
       await setGameModeAPI(mode);
+      console.log(`✅ Mode ${mode} sent to backend successfully`);
     } catch (err) {
       // Optionally handle error (e.g., show a message)
       console.error('Failed to send game mode to backend:', err);
