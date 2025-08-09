@@ -97,6 +97,8 @@ const PlayPage = () => {
   
   // Add a ref to track the current score for timer-based endGame calls
   const currentScore = useRef(0);
+  // Add a ref to prevent duplicate score submissions
+  const scoreSubmitted = useRef(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [targets, setTargets] = useState([]);
   const [hitPositions, setHitPositions] = useState([]);
@@ -518,16 +520,25 @@ const PlayPage = () => {
     setGameState("playing");
     setScore(0);
     console.log("🎮 Game started - Score reset to 0");
-    // timeLeft is already set correctly by the useEffect when gameMode changes
+    
+    // Reset timeLeft to the correct duration for the current game mode
+    const currentSettings = DIFFICULTY_SETTINGS[gameMode || "easy"] || DIFFICULTY_SETTINGS.easy;
+    setTimeLeft(currentSettings.gameDuration);
+    console.log(`⏰ Game timer reset to: ${currentSettings.gameDuration} seconds for mode: ${gameMode || "easy"}`);
+    
     totalClicks.current = 0;
     totalHardwareHits.current = 0;  // Reset hardware hits counter
     totalShots.current = 0;  // Reset total shots counter
     totalActualHits.current = 0;  // Reset actual hits counter
+    scoreSubmitted.current = false;  // Reset score submission flag
     setHitPositions([]);
     setMissPositions([]);
     gameStartTime.current = Date.now();
     generateTargets();
     setupWebSocket();
+
+    // Capture values at timer creation time to avoid stale closure issues
+    const sessionIdForTimer = currentSessionId;
 
     timerIntervalRef.current = setInterval(() => {
       setTimeLeft((prev) => {
@@ -536,7 +547,89 @@ const PlayPage = () => {
           // Use a timeout to ensure all state updates are complete
           setTimeout(() => {
             console.log(`⏰ Timer ended - calling endGame with score: ${currentScore.current}`);
-            endGame();
+            // Call endGame directly without dependency to avoid circular reference
+            setGameState("finished");
+            
+            // Calculate actual time played using game start time
+            const gameEndTime = Date.now();
+            const timePlayed = gameStartTime.current ? (gameEndTime - gameStartTime.current) / 1000 : currentSettings.gameDuration;
+            
+            console.log("🎯 Game End Calculation (Timer):");
+            console.log("  Game Start Time:", gameStartTime.current ? new Date(gameStartTime.current).toISOString() : "Not set");
+            console.log("  Game End Time:", new Date(gameEndTime).toISOString());
+            console.log("  Calculated Time Played:", timePlayed, "seconds");
+            console.log("  Final Score (from ref):", currentScore.current);
+            
+            const finalScore = currentScore.current;
+            const finalStats = {
+              accuracy: totalShots.current > 0 ? (totalActualHits.current / totalShots.current) * 100 : 0,
+              hitsPerSecond: timePlayed > 0 ? totalActualHits.current / timePlayed : 0,
+              totalClicks: totalClicks.current,
+              totalHits: totalActualHits.current,
+              totalShots: totalShots.current,
+              hardwareHits: totalHardwareHits.current,
+            };
+            
+            setGameStats(finalStats);
+            
+            // End WebSocket and hardware cleanup
+            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+              wsRef.current.send(JSON.stringify({
+                type: "game_stop",
+                timestamp: Date.now()
+              }));
+            }
+            closeWebSocket();
+            
+            // Disable motors and end session
+            disableMotors().then((motorResponse) => {
+              if (motorResponse.ok) {
+                console.log("Motors disabled successfully:", motorResponse.data);
+              } else {
+                console.warn("Failed to disable motors:", motorResponse.error);
+              }
+            }).catch((error) => {
+              console.error("Error disabling motors:", error);
+            });
+            
+            // End game session if one exists - use captured sessionId
+            if (sessionIdForTimer) {
+              endGameSession(sessionIdForTimer).then((endSessionResponse) => {
+                if (endSessionResponse.ok) {
+                  console.log("Game session ended successfully:", endSessionResponse.data);
+                } else {
+                  console.warn("Failed to end game session:", endSessionResponse.error);
+                }
+              }).catch((error) => {
+                console.error("Error ending game session:", error);
+              });
+            }
+            
+            clearInterval(targetMoveIntervalRef.current);
+            
+            // Submit score if user is logged in and score hasn't been submitted yet
+            if (user && (user.id || user._id) && !scoreSubmitted.current) {
+              scoreSubmitted.current = true; // Mark as submitted to prevent duplicates
+              const scoreData = {
+                user: user.id || user._id,
+                username: user.username || "Guest",
+                score: finalScore,
+                accuracy: finalStats.accuracy,
+                gameMode: gameMode || "easy",
+                timePlayed: timePlayed,
+              };
+              
+              console.log("💾 Submitting score from timer logic:", scoreData);
+              submitScore(scoreData).then((response) => {
+                if (response.ok) {
+                  console.log("✅ Score submitted successfully:", response.data);
+                  if (setNeedsRefresh) setNeedsRefresh(true);
+                  localStorage.setItem("leaderboardRefresh", Date.now().toString());
+                } else {
+                  console.error("❌ Submit failed:", response.error);
+                }
+              });
+            }
           }, 100);
           return 0;
         }
@@ -699,15 +792,27 @@ const PlayPage = () => {
       timePlayed
     );
     setGameStats(finalStats);
-    if (!user || !(user.id || user._id)) {
+    
+    // Submit score if user is logged in and score hasn't been submitted yet
+    if (user && (user.id || user._id) && !scoreSubmitted.current) {
+      scoreSubmitted.current = true; // Mark as submitted to prevent duplicates
+      console.log("💾 Submitting score from endGame function:", {
+        score: finalScore,
+        accuracy: finalStats.accuracy,
+        gameMode: gameMode || "easy",
+        timePlayed: timePlayed,
+      });
+      
+      submitGameScore(finalScore, finalStats, timePlayed).then(() => {
+        if (setNeedsRefresh) setNeedsRefresh(true);
+        localStorage.setItem("leaderboardRefresh", Date.now().toString());
+      });
+    } else if (scoreSubmitted.current) {
+      console.log("⚠️ Score already submitted, skipping duplicate submission");
+    } else if (!user || !(user.id || user._id)) {
       alert("You must be logged in to save your score!");
       localStorage.setItem("leaderboardRefresh", Date.now().toString());
-      return;
     }
-    submitGameScore(finalScore, finalStats, timePlayed).then(() => {
-      if (setNeedsRefresh) setNeedsRefresh(true);
-      localStorage.setItem("leaderboardRefresh", Date.now().toString());
-    });
   }, [
     score,
     settings.gameDuration,
