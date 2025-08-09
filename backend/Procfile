@@ -1,0 +1,2 @@
+# Azure App Service Configuration
+web: node index.js

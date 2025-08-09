@@ -1,0 +1,2 @@
+# Azure App Service startup script
+pm2 start index.js --no-daemon
