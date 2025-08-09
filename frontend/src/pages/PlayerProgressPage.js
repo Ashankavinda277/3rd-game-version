@@ -39,8 +39,19 @@ const PlayerProgressPage = () => {
           return;
         }
         const response = await fetchUserScores(user._id);
+        console.log('🔍 Raw API response:', response);
+        
         if (response.ok) {
-          const scores = response.data?.scores || response.data?.data?.scores || [];
+          // Extract scores from the response - the API returns { data: { scores: [...] } }
+          const scores = response.data?.data?.scores || response.data?.scores || [];
+          console.log('📊 Extracted scores:', scores);
+          
+          if (!Array.isArray(scores)) {
+            console.error('❌ Scores is not an array:', scores);
+            setError('Invalid scores data received');
+            return;
+          }
+          
           // Map and sort all games by date descending
           const allGames = scores
             .map(s => ({

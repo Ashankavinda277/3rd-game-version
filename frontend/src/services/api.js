@@ -103,17 +103,12 @@ export const testConnection = async () => {
 export const getConnectionStatus = async () => {
   return apiRequest("/game/control/status");
 };
-export async function fetchUserScores(userId) {
-  try {
-    // Add timestamp to prevent caching
-    const timestamp = Date.now();
-    const res = await fetch(`/api/game/scores/user/${userId}?_t=${timestamp}`);
-    const data = await res.json();
-    return { ok: res.ok, data, error: !res.ok ? data?.message || 'Failed to fetch user scores' : null };
-  } catch (err) {
-    return { ok: false, error: err.message || 'Network error' };
-  }
-}
+
+export const fetchUserScores = async (userId) => {
+  // Add timestamp to prevent caching
+  const timestamp = Date.now();
+  return apiRequest(`/game/scores/user/${userId}?_t=${timestamp}`);
+};
 
 // Motor control API functions
 export const setGameMode = async (gameMode, motorSettings = null) => {
