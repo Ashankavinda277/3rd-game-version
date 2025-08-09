@@ -4,12 +4,12 @@
   "description": "A web-based shooting gallery game.",
   "main": "src/index.js",
   "scripts": {
-    "start": "set NODE_OPTIONS=--openssl-legacy-provider && react-scripts start",
-    "build": "set NODE_OPTIONS=--openssl-legacy-provider && react-scripts build",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "dev": "npm start",
-    "vercel-build": "npm run build"
+    "vercel-build": "react-scripts build"
   },
   "keywords": [
     "game",
