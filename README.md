@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # Smart Shooting Gallery
 
 A web-based interactive shooting gallery with physical targets that connect to the web application via ESP8266/NodeMCU and WebSockets.
